@@ -111,7 +111,7 @@ class ForumRecommendationService:
         self.artifact_dir = Path(os.getenv("FORUM_AI_ARTIFACT_DIR", str(default_artifact_dir)))
         self.mongo_uri = os.getenv(
             "MONGODB_URI",
-            "mongodb+srv://admin:admin@espritmarket.pm6cdbe.mongodb.net/esprit_market?retryWrites=true&w=majority"
+            "mongodb://localhost:27017/esprit_market"
         )
         self.mongo_database = os.getenv("MONGODB_DATABASE", "esprit_market")
 

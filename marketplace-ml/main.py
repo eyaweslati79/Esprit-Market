@@ -60,8 +60,7 @@ app.add_middleware(
 # ── MongoDB ───────────────────────────────────────────────────────────────────
 MONGO_URI = os.getenv(
     "MONGODB_URI",
-    "mongodb+srv://admin:admin@espritmarket.pm6cdbe.mongodb.net/"
-    "esprit_market?retryWrites=true&w=majority",
+    "mongodb://localhost:27017/esprit_market",
 )
 DB_NAME = "esprit_market"
 

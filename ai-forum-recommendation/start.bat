@@ -7,7 +7,7 @@ echo.
 
 REM Set MongoDB URI if not already set
 if "%MONGODB_URI%"=="" (
-    set MONGODB_URI=mongodb+srv://admin:admin@espritmarket.pm6cdbe.mongodb.net/esprit_market?retryWrites=true^&w=majority
+    set MONGODB_URI=mongodb://localhost:27017/esprit_market
 )
 
 echo [INFO] Starting Forum AI service on port 8001...
