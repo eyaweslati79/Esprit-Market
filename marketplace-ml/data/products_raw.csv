@@ -1,0 +1,301 @@
+product_id,name,category,price,stock,shopId
+0,Backpack 0,accessories,780.55,183,shop_8
+1,USB Cable 1,school_supplies,574.36,173,shop_2
+2,Smart Watch 2,electronics,51.26,52,shop_12
+3,Headphones 3,gadgets,461.98,14,shop_4
+4,Phone Case 4,electronics,417.6,152,shop_13
+5,Calculator 5,gadgets,935.89,37,shop_12
+6,Backpack 6,electronics,832.76,61,shop_8
+7,External HDD 7,electronics,580.62,83,shop_3
+8,Marker Set 8,school_supplies,837.66,124,shop_20
+9,LED Lamp 9,accessories,942.12,144,shop_4
+10,Smart Watch 10,accessories,761.32,74,shop_1
+11,USB Cable 11,electronics,190.5,200,shop_4
+12,SSD 1TB 12,accessories,575.67,117,shop_11
+13,Mechanical Keyboard 13,accessories,851.5,24,shop_19
+14,Phone Case 14,accessories,848.1,169,shop_8
+15,Notebook A4 15,electronics,158.47,59,shop_15
+16,Marker Set 16,accessories,910.2,0,shop_2
+17,Backpack 17,school_supplies,99.76,62,shop_17
+18,SSD 1TB 18,electronics,733.31,74,shop_9
+19,LED Lamp 19,school_supplies,798.03,12,shop_2
+20,Wireless Mouse 20,school_supplies,324.1,175,shop_20
+21,Smart Watch 21,gadgets,787.04,120,shop_19
+22,SSD 1TB 22,accessories,266.4,56,shop_4
+23,Headphones 23,accessories,737.06,78,shop_19
+24,Tablet Stylus 24,school_supplies,1156.25,192,shop_2
+25,Laptop Charger 25,electronics,425.08,198,shop_10
+26,Marker Set 26,electronics,956.02,94,shop_15
+27,USB Cable 27,gadgets,856.31,97,shop_8
+28,SSD 1TB 28,electronics,474.96,117,shop_10
+29,USB Cable 29,electronics,929.41,92,shop_10
+30,External HDD 30,accessories,1017.0,177,shop_20
+31,Backpack 31,electronics,67.89,43,shop_12
+32,Notebook A4 32,school_supplies,794.05,154,shop_11
+33,Calculator 33,school_supplies,919.25,76,shop_6
+34,Smart Watch 34,accessories,227.11,155,shop_11
+35,Headphones 35,school_supplies,322.15,24,shop_5
+36,Smart Watch 36,electronics,1062.25,91,shop_11
+37,External HDD 37,gadgets,580.16,0,shop_4
+38,Backpack 38,electronics,1000.02,134,shop_10
+39,USB Cable 39,electronics,1070.21,140,shop_7
+40,LED Lamp 40,school_supplies,1026.56,181,shop_7
+41,Headphones 41,school_supplies,74.57,140,shop_9
+42,Notebook A4 42,school_supplies,773.34,121,shop_20
+43,Tablet Stylus 43,gadgets,602.3,42,shop_12
+44,Calculator 44,accessories,1066.06,192,shop_12
+45,External HDD 45,gadgets,1190.04,200,shop_10
+46,Smart Watch 46,gadgets,673.07,49,shop_8
+47,Laptop Charger 47,school_supplies,1056.13,180,shop_14
+48,Backpack 48,gadgets,563.2,99,shop_6
+49,SSD 1TB 49,accessories,58.4,100,shop_10
+50,Headphones 50,gadgets,774.3,9,shop_1
+51,Notebook A4 51,school_supplies,216.24,58,shop_20
+52,Headphones 52,electronics,501.34,0,shop_13
+53,Wireless Mouse 53,gadgets,739.76,45,shop_2
+54,Backpack 54,accessories,440.78,139,shop_2
+55,Backpack 55,accessories,450.88,54,shop_19
+56,Marker Set 56,electronics,80.36,125,shop_1
+57,Smart Watch 57,school_supplies,339.77,115,shop_13
+58,External HDD 58,school_supplies,120.51,165,shop_8
+59,Headphones 59,school_supplies,774.75,158,shop_11
+60,Phone Case 60,school_supplies,257.8,111,shop_4
+61,Tablet Stylus 61,accessories,861.51,56,shop_4
+62,SSD 1TB 62,electronics,252.12,112,shop_11
+63,LED Lamp 63,school_supplies,434.61,75,shop_8
+64,Mechanical Keyboard 64,gadgets,706.8,167,shop_1
+65,USB Cable 65,gadgets,94.62,87,shop_10
+66,Mechanical Keyboard 66,electronics,412.55,39,shop_15
+67,Tablet Stylus 67,gadgets,975.29,22,shop_5
+68,Tablet Stylus 68,school_supplies,777.2,87,shop_15
+69,Calculator 69,school_supplies,223.84,93,shop_6
+70,Tablet Stylus 70,school_supplies,394.95,176,shop_9
+71,Laptop Charger 71,gadgets,819.92,108,shop_20
+72,External HDD 72,electronics,561.57,75,shop_15
+73,External HDD 73,electronics,594.04,31,shop_20
+74,Smart Watch 74,accessories,1083.47,24,shop_7
+75,Calculator 75,school_supplies,808.79,108,shop_14
+76,Marker Set 76,electronics,654.81,129,shop_10
+77,Tablet Stylus 77,gadgets,372.36,31,shop_13
+78,Backpack 78,accessories,1072.55,108,shop_12
+79,LED Lamp 79,electronics,774.86,189,shop_4
+80,Backpack 80,school_supplies,350.79,36,shop_15
+81,Calculator 81,electronics,386.68,178,shop_14
+82,Laptop Charger 82,accessories,1171.35,150,shop_15
+83,Laptop Charger 83,gadgets,997.23,98,shop_8
+84,Phone Case 84,gadgets,258.42,145,shop_13
+85,SSD 1TB 85,gadgets,511.81,117,shop_16
+86,Calculator 86,electronics,294.68,133,shop_2
+87,Wireless Mouse 87,gadgets,765.92,45,shop_14
+88,Phone Case 88,electronics,650.92,77,shop_5
+89,Calculator 89,accessories,886.69,73,shop_17
+90,Notebook A4 90,accessories,230.76,4,shop_15
+91,Marker Set 91,electronics,306.99,139,shop_6
+92,Phone Case 92,accessories,518.21,4,shop_5
+93,Tablet Stylus 93,accessories,628.9,57,shop_17
+94,Marker Set 94,school_supplies,603.44,163,shop_11
+95,USB Cable 95,electronics,911.15,65,shop_9
+96,SSD 1TB 96,electronics,700.31,77,shop_8
+97,USB Cable 97,gadgets,864.29,153,shop_14
+98,Smart Watch 98,accessories,1089.57,84,shop_17
+99,Laptop Charger 99,accessories,912.42,47,shop_2
+100,External HDD 100,accessories,335.46,190,shop_17
+101,Marker Set 101,electronics,918.92,71,shop_10
+102,External HDD 102,accessories,887.18,188,shop_14
+103,Smart Watch 103,accessories,1135.1,64,shop_18
+104,Notebook A4 104,gadgets,377.61,29,shop_1
+105,Wireless Mouse 105,accessories,968.24,131,shop_19
+106,Laptop Charger 106,gadgets,248.91,164,shop_5
+107,Marker Set 107,gadgets,652.49,167,shop_1
+108,Tablet Stylus 108,gadgets,853.07,176,shop_9
+109,Laptop Charger 109,electronics,858.23,34,shop_2
+110,Laptop Charger 110,electronics,984.7,189,shop_6
+111,External HDD 111,accessories,546.24,56,shop_16
+112,Backpack 112,school_supplies,271.34,37,shop_3
+113,Calculator 113,school_supplies,1032.13,70,shop_19
+114,Mechanical Keyboard 114,gadgets,53.52,33,shop_15
+115,Mechanical Keyboard 115,electronics,665.67,154,shop_8
+116,Headphones 116,accessories,1090.82,43,shop_15
+117,USB Cable 117,electronics,253.18,36,shop_2
+118,USB Cable 118,school_supplies,634.26,89,shop_6
+119,Laptop Charger 119,gadgets,667.68,153,shop_19
+120,Marker Set 120,electronics,382.26,103,shop_13
+121,Calculator 121,gadgets,957.43,149,shop_2
+122,Laptop Charger 122,accessories,1134.42,170,shop_18
+123,External HDD 123,accessories,122.09,20,shop_14
+124,USB Cable 124,school_supplies,1154.28,43,shop_1
+125,Wireless Mouse 125,electronics,1108.75,108,shop_1
+126,Calculator 126,accessories,502.01,89,shop_11
+127,SSD 1TB 127,electronics,32.61,82,shop_12
+128,Marker Set 128,school_supplies,431.46,25,shop_7
+129,Backpack 129,gadgets,1101.76,117,shop_16
+130,Tablet Stylus 130,accessories,331.07,189,shop_17
+131,Backpack 131,school_supplies,1081.35,14,shop_8
+132,Tablet Stylus 132,electronics,1038.23,23,shop_13
+133,Laptop Charger 133,accessories,1026.46,113,shop_3
+134,USB Cable 134,gadgets,87.09,125,shop_7
+135,External HDD 135,gadgets,676.0,200,shop_15
+136,Laptop Charger 136,gadgets,825.85,99,shop_2
+137,Phone Case 137,accessories,1038.01,60,shop_17
+138,Backpack 138,gadgets,110.8,49,shop_12
+139,Notebook A4 139,accessories,658.71,17,shop_20
+140,Calculator 140,school_supplies,696.76,111,shop_16
+141,Mechanical Keyboard 141,school_supplies,713.32,165,shop_8
+142,External HDD 142,accessories,929.98,3,shop_2
+143,Notebook A4 143,accessories,661.99,7,shop_17
+144,Notebook A4 144,gadgets,175.85,114,shop_8
+145,Wireless Mouse 145,accessories,335.39,185,shop_11
+146,Laptop Charger 146,electronics,988.11,195,shop_2
+147,SSD 1TB 147,gadgets,1135.09,185,shop_4
+148,Mechanical Keyboard 148,accessories,862.66,55,shop_12
+149,Calculator 149,accessories,1097.31,46,shop_5
+150,Mechanical Keyboard 150,electronics,1120.41,161,shop_7
+151,LED Lamp 151,gadgets,912.3,174,shop_8
+152,Phone Case 152,accessories,656.88,26,shop_13
+153,Marker Set 153,electronics,162.15,54,shop_2
+154,External HDD 154,accessories,368.99,197,shop_5
+155,Backpack 155,electronics,547.97,52,shop_10
+156,Phone Case 156,accessories,315.95,17,shop_18
+157,Calculator 157,electronics,915.01,23,shop_20
+158,Phone Case 158,gadgets,568.5,78,shop_4
+159,Wireless Mouse 159,accessories,293.8,178,shop_4
+160,SSD 1TB 160,electronics,1080.23,127,shop_12
+161,USB Cable 161,school_supplies,234.85,41,shop_10
+162,LED Lamp 162,accessories,613.33,20,shop_9
+163,Backpack 163,school_supplies,327.68,162,shop_18
+164,Tablet Stylus 164,gadgets,844.26,181,shop_4
+165,External HDD 165,accessories,93.56,49,shop_20
+166,Headphones 166,electronics,908.56,14,shop_15
+167,Marker Set 167,accessories,1048.4,78,shop_10
+168,Marker Set 168,gadgets,918.36,31,shop_15
+169,External HDD 169,accessories,367.18,106,shop_20
+170,Smart Watch 170,gadgets,278.18,57,shop_3
+171,LED Lamp 171,gadgets,18.67,156,shop_4
+172,Notebook A4 172,gadgets,315.71,113,shop_2
+173,SSD 1TB 173,school_supplies,680.88,153,shop_19
+174,LED Lamp 174,school_supplies,306.19,117,shop_1
+175,Tablet Stylus 175,gadgets,38.37,195,shop_18
+176,Tablet Stylus 176,school_supplies,870.08,142,shop_7
+177,Smart Watch 177,gadgets,1021.17,116,shop_9
+178,Tablet Stylus 178,gadgets,1155.06,2,shop_7
+179,Phone Case 179,accessories,452.25,181,shop_2
+180,Backpack 180,accessories,132.58,150,shop_12
+181,Laptop Charger 181,school_supplies,222.29,145,shop_3
+182,Phone Case 182,electronics,338.13,169,shop_20
+183,Mechanical Keyboard 183,gadgets,1025.9,67,shop_15
+184,LED Lamp 184,school_supplies,480.58,164,shop_6
+185,SSD 1TB 185,accessories,367.53,16,shop_3
+186,External HDD 186,school_supplies,338.98,122,shop_19
+187,Phone Case 187,gadgets,373.72,41,shop_6
+188,Notebook A4 188,accessories,663.8,107,shop_11
+189,Mechanical Keyboard 189,electronics,800.94,76,shop_14
+190,Calculator 190,accessories,370.76,198,shop_17
+191,Phone Case 191,electronics,131.34,158,shop_8
+192,USB Cable 192,gadgets,578.77,190,shop_19
+193,Notebook A4 193,school_supplies,1169.45,120,shop_1
+194,Tablet Stylus 194,accessories,583.95,113,shop_1
+195,External HDD 195,electronics,920.63,97,shop_18
+196,USB Cable 196,electronics,523.3,45,shop_4
+197,Backpack 197,school_supplies,347.17,48,shop_13
+198,Mechanical Keyboard 198,accessories,189.92,68,shop_20
+199,Calculator 199,electronics,622.8,188,shop_18
+200,Notebook A4 200,gadgets,300.9,182,shop_15
+201,Laptop Charger 201,electronics,873.37,115,shop_3
+202,Tablet Stylus 202,accessories,9.21,155,shop_20
+203,Headphones 203,gadgets,639.34,45,shop_13
+204,Laptop Charger 204,accessories,963.49,93,shop_12
+205,Calculator 205,accessories,1080.82,54,shop_19
+206,Marker Set 206,accessories,790.23,192,shop_14
+207,Phone Case 207,school_supplies,1016.56,13,shop_19
+208,Mechanical Keyboard 208,accessories,11.26,45,shop_4
+209,Mechanical Keyboard 209,accessories,1074.62,14,shop_5
+210,LED Lamp 210,electronics,957.51,36,shop_6
+211,Smart Watch 211,school_supplies,108.54,177,shop_8
+212,Tablet Stylus 212,electronics,801.38,152,shop_3
+213,Marker Set 213,accessories,297.78,129,shop_5
+214,SSD 1TB 214,gadgets,445.0,152,shop_15
+215,LED Lamp 215,accessories,1084.16,172,shop_7
+216,Calculator 216,gadgets,1115.89,81,shop_19
+217,Mechanical Keyboard 217,gadgets,390.64,164,shop_4
+218,Calculator 218,accessories,206.77,194,shop_16
+219,Calculator 219,school_supplies,661.82,50,shop_6
+220,Marker Set 220,gadgets,888.25,105,shop_3
+221,SSD 1TB 221,school_supplies,1002.59,2,shop_12
+222,Tablet Stylus 222,gadgets,612.93,116,shop_16
+223,Mechanical Keyboard 223,school_supplies,284.86,107,shop_5
+224,Marker Set 224,school_supplies,604.09,92,shop_20
+225,Headphones 225,gadgets,408.27,127,shop_19
+226,Mechanical Keyboard 226,gadgets,1072.94,61,shop_3
+227,Tablet Stylus 227,electronics,392.77,164,shop_10
+228,Laptop Charger 228,electronics,411.06,12,shop_10
+229,Backpack 229,accessories,256.87,66,shop_18
+230,USB Cable 230,school_supplies,179.25,35,shop_10
+231,Phone Case 231,gadgets,653.44,12,shop_6
+232,USB Cable 232,gadgets,370.99,69,shop_12
+233,Marker Set 233,electronics,353.53,38,shop_3
+234,Calculator 234,school_supplies,65.54,85,shop_1
+235,Notebook A4 235,gadgets,1042.86,123,shop_2
+236,LED Lamp 236,electronics,496.59,89,shop_6
+237,Mechanical Keyboard 237,gadgets,1151.08,82,shop_15
+238,Mechanical Keyboard 238,accessories,121.74,133,shop_8
+239,External HDD 239,gadgets,32.71,38,shop_17
+240,LED Lamp 240,accessories,675.66,102,shop_3
+241,Backpack 241,school_supplies,1166.74,157,shop_8
+242,Backpack 242,electronics,267.45,59,shop_19
+243,Laptop Charger 243,school_supplies,802.33,117,shop_13
+244,Wireless Mouse 244,school_supplies,864.62,177,shop_7
+245,Wireless Mouse 245,electronics,166.76,176,shop_10
+246,Marker Set 246,school_supplies,677.27,113,shop_1
+247,SSD 1TB 247,school_supplies,839.54,42,shop_20
+248,Backpack 248,school_supplies,364.46,117,shop_9
+249,Marker Set 249,school_supplies,913.53,171,shop_15
+250,Laptop Charger 250,school_supplies,133.92,190,shop_7
+251,SSD 1TB 251,electronics,487.73,146,shop_18
+252,USB Cable 252,gadgets,944.2,44,shop_15
+253,Mechanical Keyboard 253,school_supplies,266.9,85,shop_11
+254,SSD 1TB 254,school_supplies,1050.33,147,shop_14
+255,USB Cable 255,accessories,649.5,188,shop_7
+256,Wireless Mouse 256,gadgets,466.79,50,shop_4
+257,Tablet Stylus 257,school_supplies,1073.52,89,shop_4
+258,Mechanical Keyboard 258,school_supplies,1037.86,28,shop_15
+259,Mechanical Keyboard 259,school_supplies,1122.19,162,shop_3
+260,LED Lamp 260,accessories,849.22,172,shop_10
+261,USB Cable 261,accessories,909.29,57,shop_12
+262,Smart Watch 262,gadgets,1058.35,141,shop_6
+263,Headphones 263,gadgets,344.51,76,shop_12
+264,Laptop Charger 264,school_supplies,111.94,129,shop_2
+265,External HDD 265,electronics,1124.35,183,shop_8
+266,External HDD 266,accessories,824.78,189,shop_10
+267,Notebook A4 267,electronics,668.47,86,shop_12
+268,Tablet Stylus 268,electronics,245.07,142,shop_4
+269,Notebook A4 269,gadgets,111.71,106,shop_19
+270,Marker Set 270,gadgets,95.28,50,shop_3
+271,Headphones 271,electronics,618.37,97,shop_3
+272,Notebook A4 272,electronics,386.87,65,shop_14
+273,Notebook A4 273,electronics,67.12,157,shop_9
+274,Calculator 274,gadgets,966.53,172,shop_19
+275,Mechanical Keyboard 275,accessories,722.99,133,shop_20
+276,Mechanical Keyboard 276,accessories,1119.36,140,shop_5
+277,Laptop Charger 277,accessories,841.04,91,shop_5
+278,SSD 1TB 278,school_supplies,412.24,36,shop_11
+279,Mechanical Keyboard 279,accessories,307.91,61,shop_6
+280,USB Cable 280,accessories,768.83,27,shop_5
+281,Tablet Stylus 281,gadgets,158.31,190,shop_1
+282,Calculator 282,accessories,972.56,190,shop_17
+283,Calculator 283,accessories,463.3,8,shop_13
+284,Mechanical Keyboard 284,accessories,133.63,153,shop_19
+285,Laptop Charger 285,school_supplies,852.64,107,shop_7
+286,Mechanical Keyboard 286,accessories,174.57,35,shop_4
+287,Backpack 287,school_supplies,508.24,133,shop_12
+288,SSD 1TB 288,gadgets,1002.43,119,shop_11
+289,Marker Set 289,electronics,1135.66,45,shop_5
+290,Calculator 290,electronics,148.54,126,shop_18
+291,Mechanical Keyboard 291,electronics,447.57,180,shop_13
+292,External HDD 292,electronics,631.67,140,shop_7
+293,USB Cable 293,gadgets,1028.29,192,shop_13
+294,Smart Watch 294,electronics,623.37,35,shop_18
+295,USB Cable 295,electronics,882.1,102,shop_5
+296,Backpack 296,electronics,159.87,73,shop_16
+297,Backpack 297,electronics,272.18,111,shop_12
+298,Marker Set 298,gadgets,711.25,65,shop_14
+299,External HDD 299,accessories,305.42,10,shop_9

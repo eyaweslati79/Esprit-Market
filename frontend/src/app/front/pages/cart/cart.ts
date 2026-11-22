@@ -224,6 +224,40 @@ export class Cart implements OnInit {
       next: (cfg) => { this.taxRate.set(cfg.rate); this.taxName.set(cfg.name); },
       error: () => { /* fallback 19% already set */ }
     });
+
+    // Auto-apply loyalty coupon if coming from loyalty page
+    const loyaltyDiscount = this.route.snapshot.queryParamMap.get('loyaltyDiscount');
+    if (loyaltyDiscount && parseFloat(loyaltyDiscount) > 0) {
+      this.autoApplyLoyaltyCoupon(parseFloat(loyaltyDiscount));
+    }
+  }
+
+  /** Fetch the user's first active loyalty coupon and apply it automatically */
+  private autoApplyLoyaltyCoupon(discountTnd: number): void {
+    this.loyaltyService.getMyActiveRewards().subscribe({
+      next: (rewards) => {
+        const activeCoupon = rewards.find(r => r.status === 'ACTIVE' && !r.isExpired && r.canUse);
+        if (activeCoupon?.couponCode) {
+          this.couponCode.set(activeCoupon.couponCode);
+          // Small delay to let cart load first
+          setTimeout(() => {
+            this.cartService.applyCoupon(activeCoupon.couponCode).subscribe({
+              next: () => {
+                this.toastService.success(
+                  `🎁 Loyalty coupon applied! You save ${discountTnd.toFixed(2)} TND`
+                );
+                this.couponCode.set('');
+                this.loadRealCartData();
+              },
+              error: () => {
+                // Coupon may already be applied or not valid for this shop — silent fail
+              }
+            });
+          }, 800);
+        }
+      },
+      error: () => {}
+    });
   }
 
   private initDeliveryEstimation(): void {

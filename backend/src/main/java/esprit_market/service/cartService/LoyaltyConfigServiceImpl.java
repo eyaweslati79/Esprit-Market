@@ -77,11 +77,17 @@ public class LoyaltyConfigServiceImpl implements ILoyaltyConfigService {
     
     @PostConstruct
     public void ensureDefaultConfigExists() {
-        if (repository.findByActiveTrue().isEmpty()) {
-            log.warn("⚠️ No active loyalty config found on startup. Creating default configuration...");
-            createDefaultConfig();
-        } else {
-            log.info("✅ Active loyalty configuration found on startup");
+        try {
+            if (repository.findByActiveTrue().isEmpty()) {
+                log.warn("⚠️ No active loyalty config found on startup. Creating default configuration...");
+                createDefaultConfig();
+            } else {
+                log.info("✅ Active loyalty configuration found on startup");
+            }
+        } catch (Exception e) {
+            // MongoDB may be temporarily unreachable (network timeout, Atlas cold start).
+            // Log the warning and continue — the config will be created on first use.
+            log.warn("⚠️ Could not initialise loyalty config on startup (MongoDB unreachable?): {}. Will retry on first request.", e.getMessage());
         }
     }
     

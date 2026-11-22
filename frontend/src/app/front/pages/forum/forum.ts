@@ -30,6 +30,7 @@ interface SimplePost {
   flames: number;
   moderationBadge?: ModerationBadge;
   userReaction?: ReactionType;
+  imageUrl?: string;
 }
 
 interface ForumReplyUI {
@@ -65,7 +66,7 @@ export class Forum implements OnInit {
   private formBuilder = inject(FormBuilder);
   public chatService = inject(ChatService);
   private authService = inject(AuthService);
-  private forumService: ForumService = inject(ForumService);
+  public forumService: ForumService = inject(ForumService);
 
   readonly ReactionType = ReactionType;
 
@@ -101,6 +102,13 @@ export class Forum implements OnInit {
   showManageCategoriesModal = signal(false);
   editingCategoryId = signal<string | null>(null);
   isSavingCategory = signal(false);
+
+  // Image upload for new post
+  selectedImageFile = signal<File | null>(null);
+  imagePreviewUrl   = signal<string | null>(null);
+
+  // Online users (fetched from user list for the sidebar)
+  onlineUsers = signal<{ id: string; name: string; avatar?: string; online: boolean }[]>([]);
 
   // Forms
   createPostForm!: FormGroup;
@@ -180,6 +188,7 @@ export class Forum implements OnInit {
   ngOnInit(): void {
     this.initForms();
     this.loadForumData();
+    this.loadOnlineUsers();
 
     // ── AI semantic search: debounce 500ms, min 3 chars ───────────────────
     this.searchSubject.pipe(
@@ -318,6 +327,38 @@ export class Forum implements OnInit {
     });
   }
 
+  /** Load recent forum participants to show in the "People" sidebar. */
+  private loadOnlineUsers(): void {
+    // Derive unique author IDs from posts already loaded, or fetch fresh
+    // We reuse the userNames map — once posts load, prefetchUserNames fills it.
+    // Here we just expose the top-N authors as "online users" for the sidebar.
+    // Real presence is handled by PresenceService in the chat widget.
+    const currentUserId = localStorage.getItem('userId') ?? '';
+    const authorIds = [...new Set(
+      this.posts().map(p => p.authorId).filter(id => id && id !== currentUserId)
+    )].slice(0, 12);
+
+    authorIds.forEach(id => {
+      if (this.userNames()[id]) {
+        this.onlineUsers.update(list => {
+          if (list.find(u => u.id === id)) return list;
+          return [...list, { id, name: this.userNames()[id], online: Math.random() > 0.4 }];
+        });
+      } else {
+        this.forumService.getUserById(id).subscribe({
+          next: u => {
+            const name = `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || id;
+            this.onlineUsers.update(list => {
+              if (list.find(u2 => u2.id === id)) return list;
+              return [...list, { id, name, online: Math.random() > 0.4 }];
+            });
+          },
+          error: () => {}
+        });
+      }
+    });
+  }
+
   openManageCategories(): void {
     if (!this.isAdmin()) return;
     this.editingCategoryId.set(null);
@@ -411,6 +452,15 @@ export class Forum implements OnInit {
       pinned: !!post.isPinned,
       approved: !!post.approved
     });
+
+    // Only admins can change the category — disable the control for regular users
+    const categoryCtrl = this.updatePostForm.get('categoryId');
+    if (this.isAdmin()) {
+      categoryCtrl?.enable();
+    } else {
+      categoryCtrl?.disable();
+    }
+
     this.showUpdatePostModal.set(true);
   }
 
@@ -438,6 +488,24 @@ export class Forum implements OnInit {
     return this.isAdmin() || (currentUserId !== null && reply.authorId === currentUserId);
   }
 
+  // ── Image upload helpers ──────────────────────────────────────────────────
+  onPostImageSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    if (!file) return;
+    if (!['image/jpeg','image/jpg','image/png','image/webp','image/gif'].includes(file.type)) return;
+    if (file.size > 8 * 1024 * 1024) return; // 8 MB max
+    this.selectedImageFile.set(file);
+    const reader = new FileReader();
+    reader.onload = () => this.imagePreviewUrl.set(reader.result as string);
+    reader.readAsDataURL(file);
+  }
+
+  removePostImage(): void {
+    this.selectedImageFile.set(null);
+    this.imagePreviewUrl.set(null);
+  }
+
   createPost(): void {
     if (this.createPostForm.invalid) {
       this.createPostForm.markAllAsTouched();
@@ -446,7 +514,6 @@ export class Forum implements OnInit {
 
     this.isCreatingPost.set(true);
     const formValue = this.createPostForm.value;
-
     const tags = formValue.tags ? (String(formValue.tags).split(',').map((t: string) => t.trim()).filter(Boolean)) : [];
 
     const request: CreatePostRequest = {
@@ -456,11 +523,12 @@ export class Forum implements OnInit {
       tags
     };
 
-    this.forumService.createPost(request).subscribe({
+    this.forumService.createPostWithImage(request, this.selectedImageFile()).subscribe({
       next: (createdPost) => {
         this.latestRecommendations.set(createdPost.recommendedPosts ?? []);
         this.recommendationsLoading.set(false);
         this.isCreatingPost.set(false);
+        this.removePostImage();
         this.closeCreatePostModal();
         this.loadForumData();
       },
@@ -894,7 +962,8 @@ export class Forum implements OnInit {
             approved: p.approved,
             moderationBadge,
             userReaction,
-            flames: postReactions.filter((r: ReactionDto) => r.type === 'FLAME').length
+            flames: postReactions.filter((r: ReactionDto) => r.type === 'FLAME').length,
+            imageUrl: p.imageUrl
           };
         });
 
@@ -902,6 +971,8 @@ export class Forum implements OnInit {
         this.posts.set(postsMapped);
         this.prefetchUserNames(postsDto.map((p: PostDto) => p.userId));
         this.forumService.isLoading.set(false);
+        // Populate sidebar people list after posts are ready
+        setTimeout(() => this.loadOnlineUsers(), 800);
       },
       error: (err: unknown) => {
         console.error('Failed to load forum data:', err);

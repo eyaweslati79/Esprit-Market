@@ -61,7 +61,7 @@
               </label>
               <input 
                 type="text"
-                [(ngModel)]="productName"
+                [ngModel]="productName()"
                 (ngModelChange)="productName.set($event)"
                 name="productName"
                 placeholder="e.g., Laptop Stand Aluminum"
@@ -77,7 +77,7 @@
                 Description <span class="text-red-500">*</span>
               </label>
               <textarea 
-                [(ngModel)]="description"
+                [ngModel]="description()"
                 (ngModelChange)="description.set($event)"
                 name="description"
                 rows="4"
@@ -107,8 +107,8 @@
                 <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">TND</span>
                 <input 
                   type="number"
-                  [(ngModel)]="price"
-                  (ngModelChange)="price.set($event)"
+                  [ngModel]="price()"
+                  (ngModelChange)="price.set(+$event)"
                   name="price"
                   min="0"
                   step="0.01"
@@ -126,8 +126,8 @@
               </label>
               <input 
                 type="number"
-                [(ngModel)]="stock"
-                (ngModelChange)="stock.set($event)"
+                [ngModel]="stock()"
+                (ngModelChange)="stock.set(+$event)"
                 name="stock"
                 min="0"
                 placeholder="0"

@@ -10,12 +10,14 @@ import esprit_market.entity.marketplace.Shop;
 import esprit_market.entity.user.User;
 import esprit_market.Enum.marketplaceEnum.ProductStatus;
 import esprit_market.repository.marketplaceRepository.CategoryRepository;
+import esprit_market.repository.marketplaceRepository.ProductReviewRepository;
 import esprit_market.repository.marketplaceRepository.ShopRepository;
 import esprit_market.repository.userRepository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,6 +30,7 @@ public class ProductMapper {
     private final ShopRepository shopRepository;
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
+    private final ProductReviewRepository reviewRepository;
 
     public ProductResponseDTO toDTO(Product product) {
         if (product == null)
@@ -118,6 +121,27 @@ public class ProductMapper {
             }
         }
 
+        // ✅ COMPUTE: Is flash sale currently live?
+        boolean flashSaleLive = false;
+        if (product.isFlashSaleActive() && product.getFlashSalePrice() != null
+                && product.getFlashSaleStartTime() != null && product.getFlashSaleEndTime() != null) {
+            LocalDateTime now = LocalDateTime.now();
+            flashSaleLive = now.isAfter(product.getFlashSaleStartTime())
+                    && now.isBefore(product.getFlashSaleEndTime());
+        }
+
+        // ✅ COMPUTE: Rating from reviews — use count only, skip per-product DB query on list calls
+        // averageRating and reviewsCount are computed lazily; for list views pass 0 to avoid N+1
+        // Individual product fetch (getById) will have accurate values via a separate query
+        long reviewsCount = 0;
+        double averageRating = 0.0;
+        if (product.getId() != null) {
+            var reviews = reviewRepository.findByProductId(product.getId());
+            var approved = reviews.stream().filter(r -> r.isApproved()).toList();
+            reviewsCount = approved.size();
+            averageRating = approved.stream().mapToInt(r -> r.getRating()).average().orElse(0.0);
+        }
+
         return ProductResponseDTO.builder()
                 .id(product.getId() != null ? product.getId().toHexString() : null)
                 .name(product.getName())
@@ -141,6 +165,16 @@ public class ProductMapper {
                 // ✅ TRUST & REPUTATION FIELDS
                 .trustScore(trustScore)
                 .trustBadge(trustBadge)
+                // ✅ FLASH SALE FIELDS
+                .flashSaleActive(product.isFlashSaleActive())
+                .flashSalePrice(product.getFlashSalePrice())
+                .flashSaleStartTime(product.getFlashSaleStartTime())
+                .flashSaleEndTime(product.getFlashSaleEndTime())
+                .flashSaleMaxQuantity(product.getFlashSaleMaxQuantity())
+                .flashSaleSoldQuantity(product.getFlashSaleSoldQuantity())
+                .flashSaleLive(flashSaleLive)
+                .averageRating(averageRating)
+                .reviewsCount(reviewsCount)
                 .build();
     }
 

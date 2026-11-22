@@ -96,246 +96,249 @@
 <!-- MAIN VIEW -->
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-<!-- Passenger Engagement & Discount Widget (full width, always visible) -->
-<div class="mb-6">
-  <app-passenger-engagement-widget />
-</div>
+<!-- Passenger Engagement & Discount Widget — moved into left sidebar below -->
 
 <!-- ═══════════════════════════════════════════════════════════════
      PASSENGER VIEW — Two-column: Rides list LEFT + Map RIGHT
 ═══════════════════════════════════════════════════════════════ -->
 <div class="flex flex-col lg:flex-row gap-6">
 
-  <!-- LEFT: Filters + Ride cards -->
+  <!-- LEFT: Filters + Ride cards + Rewards widget -->
   <div class="flex-1 min-w-0">
 
-    <!-- Tabs + sort -->
-    <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
-      <div class="flex gap-2">
-        <button (click)="passengerTab.set('rides')"
-          class="px-4 py-2 rounded-xl font-bold text-sm transition-all"
-          [class.bg-primary]="passengerTab()==='rides'" [class.text-white]="passengerTab()==='rides'"
-          [style.background-color]="passengerTab()!=='rides'?'var(--subtle)':''"
-          [style.color]="passengerTab()!=='rides'?'var(--muted)':''">
-          🚗 Driver Offers
+    <!-- Uber-style Tabs + Sort Bar -->
+    <div class="uber-tab-bar mb-5">
+      <!-- Tab pills -->
+      <div class="uber-tabs">
+        <button (click)="passengerTab.set('rides')" class="uber-tab" [class.uber-tab--active]="passengerTab()==='rides'">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/><rect x="9" y="11" width="14" height="10" rx="2"/><circle cx="12" cy="21" r="1"/><circle cx="20" cy="21" r="1"/></svg>
+          Driver Offers
           @if (filteredRides().length > 0) {
-            <span class="ml-1.5 text-[10px] font-black opacity-70">{{ filteredRides().length }}</span>
+            <span class="uber-tab-badge">{{ filteredRides().length }}</span>
           }
         </button>
-        <button (click)="passengerTab.set('co-requests')"
-          class="relative px-4 py-2 rounded-xl font-bold text-sm transition-all"
-          [class.bg-primary]="passengerTab()==='co-requests'" [class.text-white]="passengerTab()==='co-requests'"
-          [style.background-color]="passengerTab()!=='co-requests'?'var(--subtle)':''"
-          [style.color]="passengerTab()!=='co-requests'?'var(--muted)':''">
-          👥 Co-Requests
+        <button (click)="passengerTab.set('co-requests')" class="uber-tab" [class.uber-tab--active]="passengerTab()==='co-requests'">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Co-Requests
           @if (carpoolingService.availableRideRequests().length > 0) {
-            <span class="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">{{ carpoolingService.availableRideRequests().length }}</span>
+            <span class="uber-tab-badge uber-tab-badge--red">{{ carpoolingService.availableRideRequests().length }}</span>
           }
         </button>
-        <button (click)="passengerTab.set('my-requests')"
-          class="relative px-4 py-2 rounded-xl font-bold text-sm transition-all"
-          [class.bg-primary]="passengerTab()==='my-requests'" [class.text-white]="passengerTab()==='my-requests'"
-          [style.background-color]="passengerTab()!=='my-requests'?'var(--subtle)':''"
-          [style.color]="passengerTab()!=='my-requests'?'var(--muted)':''">
-          📋 My Requests
+        <button (click)="passengerTab.set('my-requests')" class="uber-tab" [class.uber-tab--active]="passengerTab()==='my-requests'">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          My Requests
           @if (myRideRequests().length > 0) {
-            <span class="ml-1.5 text-[10px] font-black opacity-70">{{ myRideRequests().length }}</span>
+            <span class="uber-tab-badge">{{ myRideRequests().length }}</span>
           }
         </button>
       </div>
-      <div class="flex items-center gap-2">
-        @for (s of [['cheapest','💰 Cheapest'],['fastest','⚡ Fastest'],['rated','⭐ Rated']]; track s[0]) {
-          <button (click)="setSort($any(s[0]))"
-            class="px-3 py-1.5 rounded-full text-xs font-bold transition-all"
-            [class.bg-primary]="searchSortBy()===s[0]" [class.text-white]="searchSortBy()===s[0]"
-            [style.background-color]="searchSortBy()!==s[0]?'var(--subtle)':''"
-            [style.color]="searchSortBy()!==s[0]?'var(--muted)':''">{{ s[1] }}</button>
-        }
+
+      <!-- Sort chips -->
+      <div class="uber-sort-chips">
+        <button (click)="setSort('cheapest')" class="uber-chip" [class.uber-chip--active]="searchSortBy()==='cheapest'">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          Cheapest
+        </button>
+        <button (click)="setSort('fastest')" class="uber-chip" [class.uber-chip--active]="searchSortBy()==='fastest'">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          Fastest
+        </button>
+        <button (click)="setSort('rated')" class="uber-chip" [class.uber-chip--active]="searchSortBy()==='rated'">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Rated
+        </button>
       </div>
     </div>
 
-    <!-- Driver Offers Tab -->
+    <!-- ── Driver Offers Tab ─────────────────────────────────────── -->
     @if (passengerTab() === 'rides') {
       @if (isLoading()) {
+        <!-- Skeleton shimmer -->
         <div class="space-y-3">
           @for (i of [1,2,3]; track i) {
-            <div class="rounded-2xl h-32 animate-pulse" style="background-color:var(--subtle)"></div>
+            <div class="uber-ride-skeleton">
+              <div class="uber-skeleton-avatar"></div>
+              <div class="uber-skeleton-body">
+                <div class="uber-skeleton-line w-1/3"></div>
+                <div class="uber-skeleton-line w-2/3 mt-2"></div>
+                <div class="uber-skeleton-line w-1/2 mt-2"></div>
+              </div>
+              <div class="uber-skeleton-price"></div>
+            </div>
           }
         </div>
       } @else if (filteredRides().length === 0) {
-        <div class="rounded-2xl p-12 text-center" style="background-color:var(--card-bg);border:1px solid var(--border)">
-          <span class="text-5xl block mb-3">🚗</span>
-          <h3 class="font-black text-lg" style="color:var(--text-color)">No rides found</h3>
-          <p class="text-sm mt-1 mb-5" style="color:var(--muted)">Try different locations or dates</p>
-          <button (click)="openCreateRideRequestModal()" class="px-5 py-2.5 bg-primary text-white font-bold rounded-xl text-sm hover:bg-primary-dark transition-all">
-            📣 Request a Ride
+        <!-- Uber-style empty state -->
+        <div class="uber-empty-state">
+          <div class="uber-empty-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/>
+              <rect x="9" y="11" width="14" height="10" rx="2"/>
+              <circle cx="12" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+            </svg>
+          </div>
+          <h3 class="uber-empty-title">No rides found</h3>
+          <p class="uber-empty-sub">Try different locations or dates</p>
+          <button (click)="openCreateRideRequestModal()" class="uber-btn-primary mt-6">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6 6l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16.92z"/></svg>
+            Request a Ride
           </button>
         </div>
       } @else {
         <div class="space-y-3">
           @for (ride of filteredRides(); track ride.rideId) {
-            <div class="premium-card-gold p-6 transition-all hover:-translate-y-1 hover:shadow-2xl group mb-4"
-              [class.cursor-pointer]="!isOwnRide(ride)"
-              [class.cursor-default]="isOwnRide(ride)"
-              [class.opacity-75]="isOwnRide(ride)"
+            <!-- Uber-style ride card -->
+            <div class="uber-ride-card group"
+              [class.uber-ride-card--own]="isOwnRide(ride)"
               (click)="!isOwnRide(ride) && openBookingPanel(ride.rideId)">
-              <div class="flex items-start gap-4">
-                <!-- Driver avatar -->
-                <div class="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center text-white font-black text-lg shrink-0 shadow-sm">
-                  {{ (ride.driverName||'D').charAt(0).toUpperCase() }}
-                </div>
-                <!-- Route info -->
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2 mb-2 flex-wrap">
-                    <span class="font-black text-sm" style="color:var(--text-color)">{{ ride.driverName || 'Driver' }}</span>
-                    @if (isOwnRide(ride)) {
-                      <span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
-                        🚗 Your Ride
-                      </span>
-                    }
-                    @if (ride.driverRating) {
-                      <span class="flex items-center gap-0.5 text-xs font-bold text-amber-500">⭐ {{ ride.driverRating | number:'1.1-1' }}</span>
-                    }
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">{{ formatDate(ride.departureTime) }}</span>
-                    @if (ride.estimatedDurationMinutes) {
-                      <span class="text-[10px] font-bold" style="color:var(--muted)">~{{ ride.estimatedDurationMinutes }}min</span>
-                    }
-                    @if (ride.createdAt) {
-                      <span class="text-[10px] font-bold text-emerald-500 italic">Posted {{ formatDate(ride.createdAt) }}</span>
-                    }
-                  </div>
-                  <!-- Route visual -->
-                  <div class="flex items-center gap-3">
-                    <div class="flex flex-col items-center gap-1 shrink-0">
-                      <div class="w-2.5 h-2.5 rounded-full bg-primary"></div>
-                      <div class="w-px h-5" style="background-color:var(--border)"></div>
-                      <div class="w-2.5 h-2.5 rounded-full bg-green-500"></div>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <p class="font-bold text-sm truncate" style="color:var(--text-color)">{{ ride.departureLocation }}</p>
-                      <p class="font-bold text-sm truncate mt-3" style="color:var(--text-color)">{{ ride.destinationLocation }}</p>
-                    </div>
-                  </div>
-                </div>
-                <!-- Price + seats -->
-                <div class="text-right shrink-0">
-                  <p class="text-2xl font-black text-primary">{{ ride.pricePerSeat }}</p>
-                  <p class="text-[10px] font-bold" style="color:var(--muted)">TND/seat</p>
-                  <div class="mt-2 flex items-center gap-1 justify-end">
-                    @for (s of [1,2,3,4]; track s) {
-                      <div class="w-4 h-4 rounded-sm text-[8px] flex items-center justify-center"
-                        [class.bg-primary]="s <= ride.availableSeats"
-                        [class.text-white]="s <= ride.availableSeats"
-                        [style.background-color]="s > ride.availableSeats ? 'var(--border)' : ''">🪑</div>
-                    }
-                  </div>
-                  <p class="text-[10px] mt-1" style="color:var(--muted)">{{ ride.availableSeats }} left</p>
+
+              <!-- Left: avatar + route line -->
+              <div class="uber-ride-card__left">
+                <div class="uber-avatar">{{ (ride.driverName||'D').charAt(0).toUpperCase() }}</div>
+                <div class="uber-route-line">
+                  <span class="uber-route-dot uber-route-dot--from"></span>
+                  <span class="uber-route-connector"></span>
+                  <span class="uber-route-dot uber-route-dot--to"></span>
                 </div>
               </div>
-              <!-- Book CTA -->
-              <div class="mt-4 pt-3 border-t flex items-center justify-between" style="border-color:var(--border)">
-                <span class="text-xs font-semibold" style="color:var(--muted)">{{ ride.availableSeats }} seats available</span>
-                @if (isOwnRide(ride)) {
-                  <span class="px-4 py-2 bg-amber-50 text-amber-600 font-bold rounded-xl text-xs border border-amber-200">
-                    🚗 You're the driver
+
+              <!-- Center: info -->
+              <div class="uber-ride-card__body">
+                <div class="uber-ride-card__header">
+                  <span class="uber-driver-name">{{ ride.driverName || 'Driver' }}</span>
+                  @if (isOwnRide(ride)) {
+                    <span class="uber-badge uber-badge--amber">Your Ride</span>
+                  }
+                  @if (ride.driverRating) {
+                    <span class="uber-rating">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                      {{ ride.driverRating | number:'1.1-1' }}
+                    </span>
+                  }
+                </div>
+
+                <p class="uber-location uber-location--from">{{ ride.departureLocation }}</p>
+                <p class="uber-location uber-location--to">{{ ride.destinationLocation }}</p>
+
+                <div class="uber-ride-meta">
+                  <span class="uber-meta-chip">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    {{ formatDate(ride.departureTime) }}
                   </span>
+                  @if (ride.estimatedDurationMinutes) {
+                    <span class="uber-meta-chip">~{{ ride.estimatedDurationMinutes }} min</span>
+                  }
+                  @if (ride.createdAt) {
+                    <span class="uber-meta-chip uber-meta-chip--green">Posted {{ formatDate(ride.createdAt) }}</span>
+                  }
+                </div>
+              </div>
+
+              <!-- Right: price + seats + CTA -->
+              <div class="uber-ride-card__right">
+                <div class="uber-price">
+                  <span class="uber-price__amount">{{ ride.pricePerSeat }}</span>
+                  <span class="uber-price__unit">TND/seat</span>
+                </div>
+                <div class="uber-seats">
+                  @for (s of [1,2,3,4]; track s) {
+                    <span class="uber-seat-dot" [class.uber-seat-dot--taken]="s > ride.availableSeats"></span>
+                  }
+                  <span class="uber-seats__label">{{ ride.availableSeats }} left</span>
+                </div>
+                @if (isOwnRide(ride)) {
+                  <span class="uber-badge uber-badge--amber mt-2">You're driving</span>
                 } @else {
-                  <button class="px-4 py-2 bg-primary hover:bg-primary-dark text-white font-bold rounded-xl text-xs transition-all active:scale-95 opacity-0 group-hover:opacity-100">
-                    Book Now →
-                  </button>
+                  <button class="uber-book-btn">Book →</button>
                 }
               </div>
             </div>
           }
         </div>
-        <!-- Request ride CTA -->
-        <div class="mt-4 rounded-2xl p-4 flex items-center justify-between" style="background-color:var(--subtle)">
+
+        <!-- Bottom CTA banner -->
+        <div class="uber-cta-banner mt-4">
           <div>
-            <p class="font-bold text-sm" style="color:var(--text-color)">Can't find the right ride?</p>
-            <p class="text-xs" style="color:var(--muted)">Post a request and let drivers come to you</p>
+            <p class="uber-cta-banner__title">Can't find the right ride?</p>
+            <p class="uber-cta-banner__sub">Post a request and let drivers come to you</p>
           </div>
-          <button (click)="openCreateRideRequestModal()" class="px-4 py-2.5 bg-primary text-white font-bold rounded-xl text-sm hover:bg-primary-dark transition-all shrink-0">
-            📣 Request
-          </button>
+          <button (click)="openCreateRideRequestModal()" class="uber-btn-primary uber-btn-primary--sm">Request</button>
         </div>
       }
     }
 
-    <!-- Co-Passenger Requests Tab -->
+    <!-- ── Co-Passenger Requests Tab ────────────────────────────── -->
     @if (passengerTab() === 'co-requests') {
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-xl font-black" style="color: var(--text-color)">Co-Passenger Requests</h3>
-        <button (click)="openCreateRideRequestModal()" class="px-5 py-2.5 bg-primary text-white rounded-xl font-bold text-sm hover:bg-primary-dark transition-all">📣 Post My Request</button>
+        <h3 class="uber-section-title">Co-Passenger Requests</h3>
+        <button (click)="openCreateRideRequestModal()" class="uber-btn-primary uber-btn-primary--sm">Post My Request</button>
       </div>
       @if (carpoolingService.availableRideRequests().length === 0) {
-        <div class="rounded-2xl p-12 text-center" style="background-color:var(--card-bg);border:1px solid var(--border)">
-          <span class="text-5xl block mb-3">👥</span>
-          <h3 class="font-black text-lg" style="color:var(--text-color)">No co-passenger requests right now.</h3>
-          <p class="text-sm mt-1" style="color:var(--muted)">Be the first — post your request and let drivers find you</p>
+        <div class="uber-empty-state">
+          <div class="uber-empty-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <h3 class="uber-empty-title">No co-passenger requests right now</h3>
+          <p class="uber-empty-sub">Be the first — post your request and let drivers find you</p>
         </div>
       } @else {
         <div class="space-y-3">
           @for (req of carpoolingService.availableRideRequests(); track req.id) {
-            <div class="premium-card-gold p-6 transition-all hover:-translate-y-1 hover:shadow-2xl cursor-pointer group mb-4"
-              (click)="joinCoRequest(req)">
-              <div class="flex items-start gap-4">
-                <!-- Passenger avatar -->
-                <div class="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center text-white font-black text-lg shrink-0 shadow-sm">
-                  {{ (req.passengerName || 'P').charAt(0).toUpperCase() }}
-                </div>
-                <!-- Route info -->
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2 mb-2 flex-wrap">
-                    <span class="font-black text-sm" style="color:var(--text-color)">{{ req.passengerName || 'Passenger' }}</span>
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">{{ req.departureTime | date:'MMM d, HH:mm' }}</span>
-                    @if (req.counterPrice) {
-                      <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Counter: {{ req.counterPrice | currency:'TND':'symbol':'1.1-1' }}</span>
-                    }
-                  </div>
-                  <!-- Route visual -->
-                  <div class="flex items-center gap-3">
-                    <div class="flex flex-col items-center gap-1 shrink-0">
-                      <div class="w-2.5 h-2.5 rounded-full bg-primary"></div>
-                      <div class="w-px h-5" style="background-color:var(--border)"></div>
-                      <div class="w-2.5 h-2.5 rounded-full bg-green-500"></div>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <p class="font-bold text-sm truncate" style="color:var(--text-color)">{{ req.departureLocation }}</p>
-                      <p class="font-bold text-sm truncate mt-3" style="color:var(--text-color)">{{ req.destinationLocation }}</p>
-                    </div>
-                  </div>
-                </div>
-                <!-- Price + seats -->
-                <div class="text-right shrink-0">
-                  <p class="text-2xl font-black text-primary">{{ req.proposedPrice || 0 }}</p>
-                  <p class="text-[10px] font-bold" style="color:var(--muted)">TND proposed</p>
-                  <div class="mt-2 flex items-center gap-1 justify-end">
-                    @for (s of [1,2,3,4]; track s) {
-                      <div class="w-4 h-4 rounded-sm text-[8px] flex items-center justify-center"
-                        [class.bg-primary]="s <= req.requestedSeats"
-                        [class.text-white]="s <= req.requestedSeats"
-                        [style.background-color]="s > req.requestedSeats ? 'var(--border)' : ''">🪑</div>
-                    }
-                  </div>
-                  <p class="text-[10px] mt-1" style="color:var(--muted)">{{ req.requestedSeats }} seat(s)</p>
+            <div class="uber-ride-card group cursor-pointer" (click)="joinCoRequest(req)">
+              <div class="uber-ride-card__left">
+                <div class="uber-avatar uber-avatar--purple">{{ (req.passengerName || 'P').charAt(0).toUpperCase() }}</div>
+                <div class="uber-route-line">
+                  <span class="uber-route-dot uber-route-dot--from"></span>
+                  <span class="uber-route-connector"></span>
+                  <span class="uber-route-dot uber-route-dot--to"></span>
                 </div>
               </div>
-              <!-- Accept CTA -->
-              <div class="mt-4 pt-3 border-t flex items-center justify-between" style="border-color:var(--border)">
-                <span class="text-xs font-semibold px-2 py-0.5 rounded-full"
-                  [class.bg-amber-100]="req.status === 'PENDING'" [class.text-amber-700]="req.status === 'PENDING'"
-                  [class.bg-green-100]="req.status === 'ACCEPTED'" [class.text-green-700]="req.status === 'ACCEPTED'">
-                  {{ req.status }}
-                </span>
-                <div class="flex items-center gap-2">
+              <div class="uber-ride-card__body">
+                <div class="uber-ride-card__header">
+                  <span class="uber-driver-name">{{ req.passengerName || 'Passenger' }}</span>
+                  @if (req.counterPrice) {
+                    <span class="uber-badge uber-badge--amber">Counter: {{ req.counterPrice | currency:'TND':'symbol':'1.1-1' }}</span>
+                  }
+                </div>
+                <p class="uber-location uber-location--from">{{ req.departureLocation }}</p>
+                <p class="uber-location uber-location--to">{{ req.destinationLocation }}</p>
+                <div class="uber-ride-meta">
+                  <span class="uber-meta-chip">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    {{ req.departureTime | date:'MMM d, HH:mm' }}
+                  </span>
+                  <span class="uber-status-chip"
+                    [class.uber-status-chip--pending]="req.status === 'PENDING'"
+                    [class.uber-status-chip--accepted]="req.status === 'ACCEPTED'">
+                    {{ req.status }}
+                  </span>
+                </div>
+              </div>
+              <div class="uber-ride-card__right">
+                <div class="uber-price">
+                  <span class="uber-price__amount">{{ req.proposedPrice || 0 }}</span>
+                  <span class="uber-price__unit">TND</span>
+                </div>
+                <div class="uber-seats">
+                  @for (s of [1,2,3,4]; track s) {
+                    <span class="uber-seat-dot" [class.uber-seat-dot--taken]="s > req.requestedSeats"></span>
+                  }
+                  <span class="uber-seats__label">{{ req.requestedSeats }} seat(s)</span>
+                </div>
+                <div class="flex flex-col gap-1.5 mt-2">
                   @if (req.status === 'ACCEPTED' && (req.passengerUserId || req.driverUserId)) {
-                    <button (click)="$event.stopPropagation(); openRideChat(req)"
-                      class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition-all active:scale-95 flex items-center gap-1">
-                      💬 Chat
+                    <button (click)="$event.stopPropagation(); openRideChat(req)" class="uber-chat-btn">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2C6.48 2 2 6.48 2 12C2 13.89 2.525 15.66 3.44 17.17L2.5 21.5L6.83 20.56C8.34 21.475 10.11 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2Z" stroke="currentColor" stroke-width="2.5" fill="none"/>
+                        <circle cx="8" cy="11" r="0.8" fill="currentColor"/>
+                        <circle cx="12" cy="11" r="0.8" fill="currentColor"/>
+                        <circle cx="16" cy="11" r="0.8" fill="currentColor"/>
+                      </svg>
+                      Chat
                     </button>
                   }
-                  <button class="px-4 py-2 bg-primary hover:bg-primary-dark text-white font-bold rounded-xl text-xs transition-all active:scale-95 opacity-0 group-hover:opacity-100">
-                    {{ req.status === 'ACCEPTED' ? '🚗 Join Ride →' : '✋ Accept Request →' }}
+                  <button class="uber-book-btn">
+                    {{ req.status === 'ACCEPTED' ? 'Join →' : 'Accept →' }}
                   </button>
                 </div>
               </div>
@@ -345,88 +348,89 @@
       }
     }
 
-    <!-- My Requests Tab (passenger's own requests + chat for accepted ones) -->
+    <!-- ── My Requests Tab ──────────────────────────────────────── -->
     @if (passengerTab() === 'my-requests') {
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-xl font-black" style="color: var(--text-color)">My Ride Requests</h3>
-        <button (click)="openCreateRideRequestModal()" class="px-5 py-2.5 bg-primary text-white rounded-xl font-bold text-sm hover:bg-primary-dark transition-all">📣 New Request</button>
+        <h3 class="uber-section-title">My Ride Requests</h3>
+        <button (click)="openCreateRideRequestModal()" class="uber-btn-primary uber-btn-primary--sm">New Request</button>
       </div>
       @if (myRideRequests().length === 0) {
-        <div class="rounded-2xl p-12 text-center" style="background-color:var(--card-bg);border:1px solid var(--border)">
-          <span class="text-5xl block mb-3">📋</span>
-          <h3 class="font-black text-lg" style="color:var(--text-color)">No requests yet</h3>
-          <p class="text-sm mt-1 mb-5" style="color:var(--muted)">Post a request and let drivers come to you</p>
-          <button (click)="openCreateRideRequestModal()" class="px-5 py-2.5 bg-primary text-white font-bold rounded-xl text-sm hover:bg-primary-dark transition-all">
-            📣 Request a Ride
-          </button>
+        <div class="uber-empty-state">
+          <div class="uber-empty-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </div>
+          <h3 class="uber-empty-title">No requests yet</h3>
+          <p class="uber-empty-sub">Post a request and let drivers come to you</p>
+          <button (click)="openCreateRideRequestModal()" class="uber-btn-primary mt-6">Request a Ride</button>
         </div>
       } @else {
         <div class="space-y-3">
           @for (req of myRideRequests(); track req.id) {
-            <div class="premium-card-gold p-6 mb-4">
-              <div class="flex items-start gap-4">
-                <!-- Status icon -->
-                <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-xl shrink-0 shadow-sm"
-                  [class.bg-amber-100]="req.status === 'PENDING'"
-                  [class.bg-green-100]="req.status === 'ACCEPTED'"
-                  [class.bg-red-100]="req.status === 'CANCELLED'">
-                  {{ req.status === 'ACCEPTED' ? '✅' : req.status === 'CANCELLED' ? '❌' : '⏳' }}
+            <div class="uber-ride-card">
+              <div class="uber-ride-card__left">
+                <div class="uber-status-avatar"
+                  [class.uber-status-avatar--pending]="req.status === 'PENDING'"
+                  [class.uber-status-avatar--accepted]="req.status === 'ACCEPTED'"
+                  [class.uber-status-avatar--cancelled]="req.status === 'CANCELLED'">
+                  @if (req.status === 'ACCEPTED') { <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> }
+                  @else if (req.status === 'CANCELLED') { <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> }
+                  @else { <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> }
                 </div>
-                <!-- Route info -->
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2 mb-2 flex-wrap">
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                      [class.bg-amber-100]="req.status === 'PENDING'" [class.text-amber-700]="req.status === 'PENDING'"
-                      [class.bg-green-100]="req.status === 'ACCEPTED'" [class.text-green-700]="req.status === 'ACCEPTED'"
-                      [class.bg-red-100]="req.status === 'CANCELLED'" [class.text-red-700]="req.status === 'CANCELLED'">
-                      {{ req.status }}
-                    </span>
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">{{ req.departureTime | date:'MMM d, HH:mm' }}</span>
-                    @if (req.driverName) {
-                      <span class="text-[10px] font-bold" style="color:var(--muted)">Driver: {{ req.driverName }}</span>
-                    }
-                  </div>
-                  <div class="flex items-center gap-3">
-                    <div class="flex flex-col items-center gap-1 shrink-0">
-                      <div class="w-2.5 h-2.5 rounded-full bg-primary"></div>
-                      <div class="w-px h-5" style="background-color:var(--border)"></div>
-                      <div class="w-2.5 h-2.5 rounded-full bg-green-500"></div>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <p class="font-bold text-sm truncate" style="color:var(--text-color)">{{ req.departureLocation }}</p>
-                      <p class="font-bold text-sm truncate mt-3" style="color:var(--text-color)">{{ req.destinationLocation }}</p>
-                    </div>
-                  </div>
-                </div>
-                <!-- Price + seats -->
-                <div class="text-right shrink-0">
-                  <p class="text-2xl font-black text-primary">{{ req.proposedPrice || 0 }}</p>
-                  <p class="text-[10px] font-bold" style="color:var(--muted)">TND proposed</p>
-                  <p class="text-[10px] mt-1" style="color:var(--muted)">{{ req.requestedSeats }} seat(s)</p>
+                <div class="uber-route-line">
+                  <span class="uber-route-dot uber-route-dot--from"></span>
+                  <span class="uber-route-connector"></span>
+                  <span class="uber-route-dot uber-route-dot--to"></span>
                 </div>
               </div>
-              <!-- Actions row -->
-              <div class="mt-4 pt-3 border-t flex items-center justify-between" style="border-color:var(--border)">
-                <div>
-                  @if (req.counterPrice) {
-                    <span class="text-xs font-bold px-2 py-1 rounded-lg bg-amber-50 text-amber-700">
-                      Counter offer: {{ req.counterPrice }} TND
-                      @if (req.counterPriceNote) { — {{ req.counterPriceNote }} }
-                    </span>
+              <div class="uber-ride-card__body">
+                <div class="uber-ride-card__header">
+                  <span class="uber-status-chip"
+                    [class.uber-status-chip--pending]="req.status === 'PENDING'"
+                    [class.uber-status-chip--accepted]="req.status === 'ACCEPTED'"
+                    [class.uber-status-chip--cancelled]="req.status === 'CANCELLED'">
+                    {{ req.status }}
+                  </span>
+                  @if (req.driverName) {
+                    <span class="uber-meta-chip">Driver: {{ req.driverName }}</span>
                   }
                 </div>
-                @if (req.status === 'ACCEPTED' && req.driverUserId) {
-                  <button (click)="openRideChat(req)"
-                    class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm transition-all active:scale-95 flex items-center gap-2 shadow-lg shadow-emerald-600/20">
-                    💬 Chat with Driver
-                  </button>
-                }
-                @if (req.status === 'ACCEPTED' && req.rideId) {
-                  <button (click)="openReviewModal(req.rideId, req.driverName || 'your driver')"
-                    class="px-5 py-2.5 bg-amber-400 hover:bg-amber-500 text-white font-bold rounded-xl text-sm transition-all active:scale-95 flex items-center gap-2">
-                    ⭐ Rate Ride
-                  </button>
-                }
+                <p class="uber-location uber-location--from">{{ req.departureLocation }}</p>
+                <p class="uber-location uber-location--to">{{ req.destinationLocation }}</p>
+                <div class="uber-ride-meta">
+                  <span class="uber-meta-chip">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    {{ req.departureTime | date:'MMM d, HH:mm' }}
+                  </span>
+                  @if (req.counterPrice) {
+                    <span class="uber-badge uber-badge--amber">Counter: {{ req.counterPrice }} TND{{ req.counterPriceNote ? ' — ' + req.counterPriceNote : '' }}</span>
+                  }
+                </div>
+              </div>
+              <div class="uber-ride-card__right">
+                <div class="uber-price">
+                  <span class="uber-price__amount">{{ req.proposedPrice || 0 }}</span>
+                  <span class="uber-price__unit">TND</span>
+                </div>
+                <span class="uber-seats__label mt-1">{{ req.requestedSeats }} seat(s)</span>
+                <div class="flex flex-col gap-1.5 mt-2">
+                  @if (req.status === 'ACCEPTED' && req.driverUserId) {
+                    <button (click)="openRideChat(req)" class="uber-chat-btn">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2C6.48 2 2 6.48 2 12C2 13.89 2.525 15.66 3.44 17.17L2.5 21.5L6.83 20.56C8.34 21.475 10.11 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2Z" stroke="currentColor" stroke-width="2.5" fill="none"/>
+                        <circle cx="8" cy="11" r="0.8" fill="currentColor"/>
+                        <circle cx="12" cy="11" r="0.8" fill="currentColor"/>
+                        <circle cx="16" cy="11" r="0.8" fill="currentColor"/>
+                      </svg>
+                      Chat
+                    </button>
+                  }
+                  @if (req.status === 'ACCEPTED' && req.rideId) {
+                    <button (click)="openReviewModal(req.rideId, req.driverName || 'your driver')" class="uber-rate-btn">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                      Rate
+                    </button>
+                  }
+                </div>
               </div>
             </div>
           }
@@ -436,13 +440,17 @@
 
   </div><!-- /LEFT column -->
 
-  <!-- RIGHT: Sticky map -->
+  <!-- RIGHT: Sticky map + Rewards widget -->
   <div class="lg:w-96 shrink-0">
-    <div class="sticky top-24 rounded-2xl overflow-hidden shadow-lg" style="border:1px solid var(--border)">
-      <app-carpooling-map
-        [rides]="mapRides()"
-        (bookRide)="openBookingPanel($event.rideId)">
-      </app-carpooling-map>
+    <div class="sticky top-24 flex flex-col gap-4">
+      <div class="rounded-2xl overflow-hidden shadow-lg" style="border:1px solid var(--border)">
+        <app-carpooling-map
+          [rides]="mapRides()"
+          (bookRide)="openBookingPanel($event.rideId)">
+        </app-carpooling-map>
+      </div>
+      <!-- Rewards widget — vertical, left side of the two-column layout -->
+      <app-passenger-engagement-widget />
     </div>
   </div>
 

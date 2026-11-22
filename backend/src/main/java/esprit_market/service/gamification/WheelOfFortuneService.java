@@ -14,7 +14,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -37,8 +36,8 @@ public class WheelOfFortuneService {
     public SpinResultDTO spin(ObjectId userId, HttpServletRequest request) {
         log.info("User {} attempting to spin the wheel", userId);
 
-        // 1. Daily limit check
-        LocalDate today = LocalDate.now();
+        // 1. Daily limit check — use ISO date string to avoid LocalDate serialization issues
+        String today = java.time.LocalDate.now().toString(); // "yyyy-MM-dd"
         if (spinHistoryRepository.findByUserIdAndSpinDate(userId, today).isPresent()) {
             throw new RuntimeException("You have already spun the wheel today. Come back tomorrow!");
         }
@@ -47,14 +46,9 @@ public class WheelOfFortuneService {
         UserSegment userSegment = determineUserSegment(userId);
         log.info("User {} segment: {}", userId, userSegment);
 
-        // 3. Load eligible rewards
-        List<UserSegment> eligibleSegments = Arrays.asList(userSegment, UserSegment.ALL);
-        List<Reward> rewards = rewardRepository.findByActiveTrueAndTargetSegmentIn(eligibleSegments);
+        // 3. Load rewards — same stable list as getActiveRewards() to keep segment indices in sync
+        List<Reward> rewards = getAllRewardsForUser(userId);
 
-        if (rewards.isEmpty()) {
-            // Fallback: load ALL active rewards so the wheel never fails
-            rewards = rewardRepository.findByActiveTrue();
-        }
         if (rewards.isEmpty()) {
             throw new RuntimeException("No rewards configured. Please contact support.");
         }
@@ -74,6 +68,7 @@ public class WheelOfFortuneService {
                 .rewardId(selected.getId())
                 .spinDate(today)
                 .spinTimestamp(now)
+                .createdAt(now)
                 .claimed(false)
                 .ipAddress(getClientIp(request))
                 .userAgent(request.getHeader("User-Agent"))
@@ -103,21 +98,24 @@ public class WheelOfFortuneService {
 
     /** Returns active rewards visible to this user (segment-aware). */
     public List<RewardDTO> getActiveRewards(ObjectId userId) {
-        UserSegment segment = determineUserSegment(userId);
-        List<UserSegment> eligible = Arrays.asList(segment, UserSegment.ALL);
-        List<Reward> rewards = rewardRepository.findByActiveTrueAndTargetSegmentIn(eligible);
+        return getAllRewardsForUser(userId).stream()
+                .map(this::toRewardDTO)
+                .collect(Collectors.toList());
+    }
 
-        // Fallback: if segment query returns nothing, show all active rewards
-        if (rewards.isEmpty()) {
-            rewards = rewardRepository.findByActiveTrue();
-        }
-
-        return rewards.stream().map(this::toRewardDTO).collect(Collectors.toList());
+    /** Internal: consistent reward list used by both getActiveRewards() and spin(). */
+    private List<Reward> getAllRewardsForUser(ObjectId userId) {
+        // Always return ALL active rewards sorted by id for a stable, consistent order.
+        // Segment filtering was causing index mismatches between the drawn wheel and spin result.
+        List<Reward> rewards = rewardRepository.findByActiveTrue();
+        rewards.sort(Comparator.comparing(r -> r.getId().toHexString()));
+        return rewards;
     }
 
     /** True when the user has NOT yet spun today. */
     public boolean canSpinToday(ObjectId userId) {
-        return spinHistoryRepository.findByUserIdAndSpinDate(userId, LocalDate.now()).isEmpty();
+        String today = java.time.LocalDate.now().toString();
+        return spinHistoryRepository.findByUserIdAndSpinDate(userId, today).isEmpty();
     }
 
     /** Paginated spin history for the user. */
@@ -160,7 +158,7 @@ public class WheelOfFortuneService {
     /** Admin analytics. */
     public WheelStatsDTO getStatistics() {
         List<SpinHistory> all = spinHistoryRepository.findAll();
-        LocalDate today = LocalDate.now();
+        String today = java.time.LocalDate.now().toString();
 
         Map<String, Long> distribution = all.stream()
                 .filter(s -> s.getRewardLabel() != null)
@@ -235,11 +233,16 @@ public class WheelOfFortuneService {
 
     private double calculateRotation(int segmentIndex, int totalSegments) {
         double segmentAngle = 360.0 / totalSegments;
-        double targetAngle = segmentIndex * segmentAngle + (segmentAngle / 2.0);
-        int fullRotations = 5 + random.nextInt(3);
-        double total = (fullRotations * 360.0) + targetAngle;
-        total += (random.nextDouble() - 0.5) * (segmentAngle * 0.3); // small natural jitter
-        return total;
+        // The wheel draws segment 0 starting at -90° (top/12 o'clock).
+        // The pointer is at the top. To land segment[i] under the pointer:
+        //   target = -(segmentIndex * segmentAngle + segmentAngle/2)
+        // We add full rotations for drama, then normalise to a positive value.
+        double centerOfSegment = segmentIndex * segmentAngle + (segmentAngle / 2.0);
+        // We want this angle to end up at 0° (top) after rotation, so we rotate by -centerOfSegment
+        // But since the wheel starts at -90°, we need: rotation = 360 - centerOfSegment + 90 (mod 360)
+        double stopAngle = (360.0 - centerOfSegment + 270.0) % 360.0;
+        int fullRotations = 5 + random.nextInt(3); // 5–7 full spins for drama
+        return (fullRotations * 360.0) + stopAngle;
     }
 
     private String buildWinMessage(Reward reward) {

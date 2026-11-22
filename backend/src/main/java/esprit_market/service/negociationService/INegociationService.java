@@ -37,4 +37,7 @@ public interface INegociationService {
 
     void deleteNegociation(String id, String clientId);
     NegociationResponse predictNegotiation(NegociationRequest request, String clientId);
+
+    /** Backfill AI probability for all existing negotiations that don't have one yet. */
+    int backfillAiProbabilities();
 }

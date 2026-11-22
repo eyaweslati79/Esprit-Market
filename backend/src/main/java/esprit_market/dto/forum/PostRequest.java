@@ -25,4 +25,5 @@ public class PostRequest {
 
     private Boolean pinned;
     private Boolean approved;
+    private String imageUrl;  // optional Cloudinary URL
 }

@@ -1,163 +1,158 @@
-<div class="wheel-container">
-  <!-- Background Effects -->
-  <div class="bg-gradient"></div>
-  <div class="bg-pattern"></div>
+<div class="wof-page">
 
-  <!-- Main Content -->
-  <div class="content-wrapper">
-    
-    <!-- Header -->
-    <div class="header">
-      <div class="header-badge">
-        <span class="badge-dot"></span>
-        <span class="badge-text">DAILY REWARD</span>
-      </div>
-      <h1 class="title">
-        Wheel of <span class="title-highlight">Fortune</span>
-      </h1>
-      <p class="subtitle">
-        Spin once per day and win amazing rewards! 🎁
-      </p>
+  <!-- ── Toast popup ── -->
+  @if (toast()) {
+    <div class="wof-toast" [class]="'toast-' + toast()!.type" (click)="dismissToast()">
+      <span class="toast-msg">{{ toast()!.msg }}</span>
+      <button class="toast-x" (click)="dismissToast()">✕</button>
     </div>
+  }
 
-    <!-- Wheel Section -->
-    <div class="wheel-section">
-      
-      <!-- Wheel Container -->
-      <div class="wheel-wrapper">
-        <canvas #wheelCanvas class="wheel-canvas"></canvas>
-        
-        <!-- Spin Button Overlay -->
-        @if (!isSpinning()) {
-          <button 
-            class="spin-button"
-            [disabled]="!canSpin()"
-            (click)="spin()"
-            [class.disabled]="!canSpin()">
-            @if (canSpin()) {
-              <span class="spin-text">SPIN NOW</span>
-              <span class="spin-icon">🎯</span>
-            } @else {
-              <span class="spin-text">COME BACK</span>
-              <span class="spin-subtext">Tomorrow</span>
-            }
-          </button>
-        }
+  <!-- ── Confetti ── -->
+  <canvas #confettiCanvas class="confetti-canvas"></canvas>
 
+  <!-- ── Spotlight beams ── -->
+  <div class="spotlight left"></div>
+  <div class="spotlight right"></div>
+
+  <!-- ── Header ── -->
+  <header class="wof-header">
+    <div class="wof-badge">DAILY REWARD</div>
+    <h1 class="wof-title">
+      Wheel&nbsp;of&nbsp;<span class="gold-text">Fortune</span>
+    </h1>
+    <p class="wof-sub">Spin once per day and win amazing prizes! 🎁</p>
+  </header>
+
+  <!-- ── Stage ── -->
+  <div class="wof-stage">
+
+    <!-- Wheel canvas -->
+    <div class="wheel-wrap" [class.spinning]="isSpinning()">
+      <canvas #wheelCanvas class="wheel-canvas"></canvas>
+
+      <!-- Spin button — centred over hub -->
+      <button class="spin-btn"
+              [class.cant]="!canSpin()"
+              [disabled]="isSpinning() || !canSpin()"
+              (click)="spin()">
         @if (isSpinning()) {
-          <div class="spinning-overlay">
-            <div class="spinner"></div>
-            <p class="spinning-text">Spinning...</p>
+          <div class="spin-loader"></div>
+        } @else if (canSpin()) {
+          <span class="spin-label">SPIN<br>NOW</span>
+        } @else {
+          <span class="spin-label small">COME<br>BACK<br><em>Tomorrow</em></span>
+        }
+      </button>
+
+      <!-- Ticker arrow (bounces on each segment cross) -->
+      <div class="ticker" [class.tick]="tickerAngle() % 2 === 0"></div>
+    </div>
+
+    <!-- Side info panel -->
+    <aside class="wof-info">
+      <div class="info-card">
+        <span class="info-icon">🎁</span>
+        <div>
+          <strong>Daily Spin</strong>
+          <p>One free spin every 24 hours</p>
+        </div>
+      </div>
+      <div class="info-card">
+        <span class="info-icon">⭐</span>
+        <div>
+          <strong>Win Rewards</strong>
+          <p>Discounts, points & free shipping</p>
+        </div>
+      </div>
+      <div class="info-card">
+        <span class="info-icon">⚡</span>
+        <div>
+          <strong>Instant Apply</strong>
+          <p>Reward applied to your next order</p>
+        </div>
+      </div>
+
+      <!-- Reward list -->
+      <div class="reward-list">
+        <h3>Available Prizes</h3>
+        @for (r of rewards(); track r.id) {
+          <div class="reward-row" [style.--c]="r.color">
+            <span class="rr-dot" [style.background]="r.color"></span>
+            <span class="rr-icon">{{ r.icon }}</span>
+            <span class="rr-label">{{ r.label }}</span>
           </div>
         }
       </div>
-
-      <!-- Info Cards -->
-      <div class="info-cards">
-        <div class="info-card">
-          <div class="info-icon">🎁</div>
-          <div class="info-content">
-            <h3>Daily Spin</h3>
-            <p>One free spin every 24 hours</p>
-          </div>
-        </div>
-        
-        <div class="info-card">
-          <div class="info-icon">⭐</div>
-          <div class="info-content">
-            <h3>Win Rewards</h3>
-            <p>Discounts, points & more!</p>
-          </div>
-        </div>
-        
-        <div class="info-card">
-          <div class="info-icon">🚀</div>
-          <div class="info-content">
-            <h3>Instant Apply</h3>
-            <p>Use rewards on your next order</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Rewards Preview -->
-    <div class="rewards-preview">
-      <h2 class="section-title">Available Rewards</h2>
-      <div class="rewards-grid">
-        @for (reward of rewards(); track reward.id) {
-          <div class="reward-card" [style.border-color]="reward.color">
-            <div class="reward-icon" [style.background]="reward.color">
-              {{ reward.icon }}
-            </div>
-            <h3 class="reward-label">{{ reward.label }}</h3>
-            <p class="reward-description">{{ reward.description }}</p>
-            @if (reward.minOrderValue && reward.minOrderValue > 0) {
-              <span class="reward-min">Min. order: ${{ reward.minOrderValue }}</span>
-            }
-          </div>
-        }
-      </div>
-    </div>
+    </aside>
 
   </div>
 
-  <!-- Confetti Canvas -->
-  <canvas #confettiCanvas class="confetti-canvas"></canvas>
+  <!-- ── Result modal — gift box style ── -->
+  @if (showModal() && spinResult()) {
+    <div class="modal-bg" (click)="closeModal()">
+      <div class="gift-modal" (click)="$event.stopPropagation()">
 
-  <!-- Result Modal -->
-  @if (showResultModal() && spinResult()) {
-    <div class="modal-overlay" (click)="closeResultModal()">
-      <div class="modal-content" (click)="$event.stopPropagation()" 
-           [class]="getRewardIconClass(spinResult()!.reward.type)">
-        
-        <!-- Celebration Header -->
-        <div class="modal-header">
-          <div class="modal-icon">{{ spinResult()!.reward.icon }}</div>
-          <h2 class="modal-title">{{ spinResult()!.message }}</h2>
+        <button class="modal-close" (click)="closeModal()">✕</button>
+
+        <!-- Warm yellow background with floating dots -->
+        <div class="gift-bg">
+          <div class="gift-dot" style="top:12%;left:8%;width:10px;height:10px;background:#f59e0b;animation-delay:0s"></div>
+          <div class="gift-dot" style="top:20%;right:10%;width:7px;height:7px;background:#fb923c;animation-delay:.4s"></div>
+          <div class="gift-dot" style="top:60%;left:5%;width:6px;height:6px;background:#fbbf24;animation-delay:.8s"></div>
+          <div class="gift-dot" style="top:70%;right:8%;width:9px;height:9px;background:#f97316;animation-delay:.2s"></div>
+          <div class="gift-dot" style="top:40%;right:4%;width:5px;height:5px;background:#fcd34d;animation-delay:.6s"></div>
+          <div class="gift-dot" style="top:80%;left:15%;width:8px;height:8px;background:#f59e0b;animation-delay:1s"></div>
         </div>
 
-        <!-- Reward Details -->
-        <div class="modal-body">
-          <div class="reward-display">
-            <div class="reward-value">{{ spinResult()!.reward.label }}</div>
-            <p class="reward-desc">{{ spinResult()!.reward.description }}</p>
+        <!-- Gift box animation -->
+        <div class="gift-box-wrap">
+          <!-- Lid — flies up -->
+          <div class="gift-lid">
+            <div class="gift-lid-body"></div>
+            <div class="gift-ribbon-h lid-ribbon"></div>
+            <div class="gift-bow">
+              <div class="bow-left"></div>
+              <div class="bow-right"></div>
+              <div class="bow-center"></div>
+            </div>
+          </div>
+          <!-- Box body -->
+          <div class="gift-box-body">
+            <div class="gift-ribbon-v"></div>
+            <div class="gift-ribbon-h"></div>
+            <!-- Reward bursts out -->
+            <div class="gift-burst">
+              <span class="burst-icon">{{ spinResult()!.reward.icon }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Text content -->
+        <div class="gift-content">
+          <h2 class="gift-title">{{ spinResult()!.message }}</h2>
+
+          <div class="gift-prize" [style.background]="spinResult()!.reward.color">
+            <div class="prize-label">{{ spinResult()!.reward.label }}</div>
+            <div class="prize-desc">{{ spinResult()!.reward.description }}</div>
           </div>
 
           @if (spinResult()!.reward.couponCode) {
-            <div class="coupon-code">
-              <span class="coupon-label">Coupon Code:</span>
-              <span class="coupon-value">{{ spinResult()!.reward.couponCode }}</span>
+            <div class="modal-code">
+              <span class="code-tag">CODE</span>
+              <span class="code-val">{{ spinResult()!.reward.couponCode }}</span>
             </div>
           }
 
           @if (spinResult()!.expiryDate) {
-            <div class="expiry-info">
-              <svg class="expiry-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
-              <span>Valid until {{ spinResult()!.expiryDate | date:'medium' }}</span>
-            </div>
+            <p class="modal-expiry">⏰ Valid until {{ spinResult()!.expiryDate | date:'mediumDate' }}</p>
           }
+
+          <button class="gift-cta" (click)="closeModal()">Awesome! 🎉</button>
         </div>
 
-        <!-- Actions -->
-        <div class="modal-actions">
-          <button class="btn-primary" (click)="closeResultModal()">
-            Awesome! 🎉
-          </button>
-          <button class="btn-secondary" (click)="closeResultModal()">
-            View My Rewards
-          </button>
-        </div>
-
-        <!-- Close Button -->
-        <button class="modal-close" (click)="closeResultModal()">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-          </svg>
-        </button>
       </div>
     </div>
   }
+
 </div>

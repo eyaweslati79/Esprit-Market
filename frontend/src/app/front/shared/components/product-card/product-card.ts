@@ -1,5 +1,5 @@
-import { Component, input, computed, inject, signal, OnInit, OnDestroy, effect } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, input, computed, inject, signal, OnInit, OnDestroy, effect, ChangeDetectionStrategy } from '@angular/core';
+import { CommonModule, DecimalPipe } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
 import { Product } from '../../../models/product';
 import { CartService } from '../../../core/cart.service';
@@ -14,9 +14,10 @@ import { Subscription } from 'rxjs';
 @Component({
   selector: 'app-product-card',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, DecimalPipe],
   templateUrl: './product-card.html',
   styleUrl: './product-card.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ProductCard implements OnInit, OnDestroy {
   product = input.required<Product>();
@@ -32,6 +33,15 @@ export class ProductCard implements OnInit, OnDestroy {
 
   readonly isFavorited = computed(() => this.favoriteService.isProductFavorited(this.product().id));
   readonly isTogglingFavorite = signal(false);
+
+  // Flash sale countdown ticker
+  readonly flashCountdownTick = signal(0);
+  private flashCountdownTimer: ReturnType<typeof setInterval> | null = null;
+
+  // Quick View modal
+  readonly showQuickView = signal(false);
+  openQuickView(): void  { this.showQuickView.set(true);  }
+  closeQuickView(): void { this.showQuickView.set(false); }
 
   // Generate star array based on rating
   readonly stars = computed(() => {
@@ -146,10 +156,18 @@ export class ProductCard implements OnInit, OnDestroy {
         })
       );
     }
+
+    // Start flash sale countdown ticker if applicable
+    if (this.product().flashSaleLive && this.product().flashSaleEndTime) {
+      this.flashCountdownTimer = setInterval(() => {
+        this.flashCountdownTick.update(v => v + 1);
+      }, 1000);
+    }
   }
 
   ngOnDestroy(): void {
     this.subscription.unsubscribe();
+    if (this.flashCountdownTimer) clearInterval(this.flashCountdownTimer);
   }
 
   addToCart(): void {
@@ -330,6 +348,22 @@ export class ProductCard implements OnInit, OnDestroy {
     const user = this.authService.currentUser();
     if (!user?.id) return;
     this.recommendationService.trackInteraction(user.id, productId, action).subscribe();
+  }
+
+  /**
+   * Returns a live HH:MM:SS countdown string for the flash sale end time.
+   * Reads flashCountdownTick so Angular re-evaluates every second.
+   */
+  getFlashCountdown(): string {
+    void this.flashCountdownTick(); // reactive dependency
+    const endTime = this.product().flashSaleEndTime;
+    if (!endTime) return '';
+    const diff = new Date(endTime).getTime() - Date.now();
+    if (diff <= 0) return '00:00:00';
+    const h = Math.floor(diff / 3_600_000);
+    const m = Math.floor((diff % 3_600_000) / 60_000);
+    const s = Math.floor((diff % 60_000) / 1_000);
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   }
 
   toggleFavorite(event: Event): void {

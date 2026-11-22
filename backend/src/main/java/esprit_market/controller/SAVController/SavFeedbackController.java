@@ -30,7 +30,7 @@ public class SavFeedbackController {
 
     @Operation(summary = "Submit Complaint/Feedback (JSON)", description = "Creates a feedback or SAV complaint linked to a purchased CartItem.")
     @PostMapping
-    @PreAuthorize("hasRole('CLIENT')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<SavFeedbackResponseDTO> createFeedback(@Valid @RequestBody SavFeedbackRequestDTO request) {
         return new ResponseEntity<>(savFeedbackService.createFeedback(request), HttpStatus.CREATED);
     }
@@ -39,7 +39,7 @@ public class SavFeedbackController {
 
     @Operation(summary = "Submit Complaint/Feedback with Image", description = "Creates a SAV complaint or feedback with an optional product image uploaded to Cloudinary.")
     @PostMapping(value = "/with-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasRole('CLIENT')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<SavFeedbackResponseDTO> createFeedbackWithImage(
             @RequestParam("type") String type,
             @RequestParam("cartItemId") String cartItemId,
@@ -85,14 +85,14 @@ public class SavFeedbackController {
 
     @Operation(summary = "Get Feedback By ID (FR-SAV2)")
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','CLIENT')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<SavFeedbackResponseDTO> getFeedbackById(@PathVariable String id) {
         return ResponseEntity.ok(savFeedbackService.getFeedbackById(id));
     }
 
     @Operation(summary = "Get Feedbacks By CartItem (FR-SAV2)")
     @GetMapping("/cart-item/{cartItemId}")
-    @PreAuthorize("hasAnyRole('ADMIN','CLIENT')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<SavFeedbackResponseDTO>> getFeedbacksByCartItem(@PathVariable String cartItemId) {
         return ResponseEntity.ok(savFeedbackService.getFeedbacksByCartItem(cartItemId));
     }
@@ -112,7 +112,7 @@ public class SavFeedbackController {
 
     @Operation(summary = "Update Complaint/Feedback Information (FR-SAV3)")
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('CLIENT')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<SavFeedbackResponseDTO> updateFeedback(@PathVariable String id,
                                                                    @Valid @RequestBody SavFeedbackRequestDTO request) {
         return ResponseEntity.ok(savFeedbackService.updateFeedback(id, request));
@@ -136,7 +136,7 @@ public class SavFeedbackController {
 
     @Operation(summary = "Delete Feedback/Complaint (FR-SAV4)")
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('CLIENT')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> deleteFeedback(@PathVariable String id) {
         savFeedbackService.deleteFeedback(id);
         return ResponseEntity.noContent().build();

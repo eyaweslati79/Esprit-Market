@@ -421,6 +421,7 @@ def _engineer_carpool_features(df: pd.DataFrame) -> pd.DataFrame:
 
     df = pd.get_dummies(df, columns=["time_of_day"], prefix="tod")
     for col in [c for c in df.columns if c.startswith("tod_")]:
+        df[col] = df[col].astype(int)
         df[f"ix_{col}_fare"] = df[col] * df["fare_per_km"]
 
     return df
@@ -560,14 +561,20 @@ def _bootstrap_recommender_from_mongo() -> bool:
             cat_map[str(cat["_id"])] = cat.get("name", "")
 
         loaded = 0
-        for doc in db["products"].find({"status": "APPROVED"}, {"name": 1, "price": 1, "categoryIds": 1}):
+        for doc in db["products"].find(
+            {"status": "APPROVED"},
+            {"name": 1, "price": 1, "categoryIds": 1, "stock": 1, "quantity": 1}
+        ):
             pid = str(doc["_id"])
             cat_ids = doc.get("categoryIds", [])
             category = cat_map.get(str(cat_ids[0]), "") if cat_ids else ""
+            # Use stock field; fall back to quantity for legacy documents
+            raw_stock = doc.get("stock") or doc.get("quantity") or 0
             product_meta[pid] = {
                 "name":     doc.get("name", "Product"),
                 "price":    float(doc.get("price") or 0),
                 "category": category,
+                "stock":    int(raw_stock),
             }
             loaded += 1
 
@@ -754,6 +761,8 @@ class NegotiationInput(BaseModel):
     has_exchange_proposal: int
     has_image_attachment: int
     product_category: str
+    product_id: Optional[str] = None   # optional — used to look up live stock
+    stock: Optional[int] = None        # optional — overrides product_meta lookup
 
 
 class NegotiationOutcome(BaseModel):
@@ -826,7 +835,13 @@ def _preprocess_negotiation(data: NegotiationInput) -> np.ndarray:
 def _preprocess_carpooling(data: CarpoolingInput) -> np.ndarray:
     df = pd.DataFrame([data.dict()])
     df = _engineer_carpool_features(df)
-    df = pd.get_dummies(df, drop_first=True)
+    # ⚠️ Do NOT call pd.get_dummies again — _engineer_carpool_features already
+    # creates tod_* dummies. A second get_dummies call with drop_first=True
+    # would drop a tod column and scramble the feature vector.
+    # Only apply get_dummies to any remaining non-numeric columns (passenger_gender, driver_gender).
+    obj_cols = [c for c in df.select_dtypes(include="object").columns]
+    if obj_cols:
+        df = pd.get_dummies(df, columns=obj_cols, drop_first=True)
     if carpool_features:
         df = df.reindex(columns=carpool_features, fill_value=0)
     if carpool_scaler:
@@ -851,6 +866,15 @@ def _neg_explanation(data: NegotiationInput, prob: float) -> List[str]:
         reasons.append("Personalised message shows strong intent.")
     if data.has_exchange_proposal:
         reasons.append("Exchange proposal adds complexity but can attract some sellers.")
+    # Stock-aware scarcity signal
+    stock = getattr(data, "stock", None)
+    if stock is not None:
+        if stock <= 0:
+            reasons.append("Product is out of stock — seller unlikely to accept new offers.")
+        elif stock <= 3:
+            reasons.append(f"Only {stock} unit(s) left — scarcity may make seller less flexible.")
+        elif stock >= 20:
+            reasons.append(f"High stock ({stock} units) — seller may be motivated to move inventory.")
     return reasons
 
 
@@ -962,16 +986,27 @@ def predict_negotiation(data: NegotiationInput):
     if neg_model is None:
         raise HTTPException(503, "Negotiation model not loaded")
     try:
+        # Resolve live stock from product_meta if product_id provided and stock not explicitly set
+        if data.stock is None and data.product_id and data.product_id in product_meta:
+            data = data.copy(update={"stock": product_meta[data.product_id].get("stock", None)})
+
         X = _preprocess_negotiation(data)
         probs = neg_model.predict_proba(X)[0]
         classes = neg_label_encoder.classes_ if neg_label_encoder else ["REJECT", "ACCEPT"]
         prob_dict = {str(c): float(p) for c, p in zip(classes, probs)}
         accept_prob = prob_dict.get("ACCEPT", float(probs[1]) if len(probs) > 1 else 0.5)
+
+        # Adjust probability for out-of-stock products
+        stock = data.stock
+        if stock is not None and stock <= 0:
+            accept_prob = min(accept_prob, 0.05)
+
         return {
-            "prediction":        "ACCEPT" if accept_prob >= 0.5 else "REJECT",
-            "probabilities":     prob_dict,
+            "prediction":         "ACCEPT" if accept_prob >= 0.5 else "REJECT",
+            "probabilities":      prob_dict,
             "accept_probability": accept_prob,
-            "explanation":       _neg_explanation(data, accept_prob),
+            "stock":              stock,
+            "explanation":        _neg_explanation(data, accept_prob),
         }
     except Exception as e:
         raise HTTPException(500, f"Negotiation prediction error: {e}")
@@ -1071,6 +1106,12 @@ def get_recommendations(user_id: str, top_k: int = Query(default=5, ge=1, le=20)
     scores: dict[str, float] = defaultdict(float)
     sim_users = []
 
+    # Only consider products that are in stock
+    in_stock_pids = {
+        pid for pid, meta in product_meta.items()
+        if meta.get("stock", 1) > 0
+    }
+
     if user_history:
         for other_uid, other_hist in interactions.items():
             if other_uid == user_id:
@@ -1081,24 +1122,24 @@ def get_recommendations(user_id: str, top_k: int = Query(default=5, ge=1, le=20)
         sim_users.sort(key=lambda x: x[1], reverse=True)
         for sim_uid, sim_score in sim_users[:20]:
             for pid, interaction_score in interactions[sim_uid].items():
-                if pid not in already_seen:
+                if pid not in already_seen and pid in in_stock_pids:
                     scores[pid] += sim_score * interaction_score * 0.6
 
     user_cats = category_affinity.get(user_id, {})
     if user_cats:
         for pid, meta in product_meta.items():
-            if pid in already_seen:
+            if pid in already_seen or pid not in in_stock_pids:
                 continue
             if meta.get("category", "") in user_cats:
                 scores[pid] += user_cats[meta["category"]] * 0.3
 
     max_pop = max(popularity.values()) if popularity else 1.0
-    for pid in product_meta:
+    for pid in in_stock_pids:
         if pid not in already_seen:
             scores[pid] += (popularity.get(pid, 0) / max_pop) * 0.1
 
     if not scores:
-        ranked = sorted(product_meta.keys(), key=lambda p: popularity.get(p, 0), reverse=True)[:top_k]
+        ranked = sorted(in_stock_pids, key=lambda p: popularity.get(p, 0), reverse=True)[:top_k]
         reason_global = "Trending in the marketplace"
     else:
         ranked = [p for p, _ in sorted(scores.items(), key=lambda x: x[1], reverse=True)[:top_k]]
@@ -1112,6 +1153,7 @@ def get_recommendations(user_id: str, top_k: int = Query(default=5, ge=1, le=20)
         meta = product_meta.get(pid, {})
         raw  = scores.get(pid, 0.0)
         norm = round(min(raw / max(max_score, 1e-9), 1.0), 4)
+        stock = meta.get("stock", 0)
         if reason_global:
             r = reason_global
         elif pid in collab_pids:
@@ -1125,6 +1167,7 @@ def get_recommendations(user_id: str, top_k: int = Query(default=5, ge=1, le=20)
             "name":       meta.get("name", "Product"),
             "category":   meta.get("category", ""),
             "price":      meta.get("price", 0.0),
+            "stock":      stock,
             "score":      norm,
             "reason":     r,
         })
@@ -1151,7 +1194,35 @@ def post_feedback(
             raise HTTPException(400, f"Unknown action '{action}'")
 
     if product_id not in product_meta:
-        product_meta[product_id] = {"name": product_id, "category": "", "price": 0.0}
+        # Try to fetch real data from MongoDB before falling back to placeholder
+        db = _get_mongo_db()
+        if db is not None:
+            try:
+                from bson import ObjectId as BsonObjectId
+                doc = db["products"].find_one(
+                    {"_id": BsonObjectId(product_id)},
+                    {"name": 1, "price": 1, "stock": 1, "quantity": 1, "categoryIds": 1}
+                )
+                if doc:
+                    cat_map: dict[str, str] = {
+                        str(c["_id"]): c.get("name", "")
+                        for c in db["categories"].find({}, {"name": 1})
+                    }
+                    cat_ids = doc.get("categoryIds", [])
+                    category = cat_map.get(str(cat_ids[0]), "") if cat_ids else ""
+                    raw_stock = doc.get("stock") or doc.get("quantity") or 0
+                    product_meta[product_id] = {
+                        "name":     doc.get("name", product_id),
+                        "price":    float(doc.get("price") or 0),
+                        "category": category,
+                        "stock":    int(raw_stock),
+                    }
+                else:
+                    product_meta[product_id] = {"name": product_id, "category": "", "price": 0.0, "stock": 1}
+            except Exception:
+                product_meta[product_id] = {"name": product_id, "category": "", "price": 0.0, "stock": 1}
+        else:
+            product_meta[product_id] = {"name": product_id, "category": "", "price": 0.0, "stock": 1}
 
     _record_interaction(user_id, product_id, action)
     _save_interactions()
@@ -1165,6 +1236,68 @@ def post_feedback(
     }
 
 
+class ProductStockUpdate(BaseModel):
+    """Payload sent by Spring Boot when product stock changes."""
+    product_id: str
+    stock: int
+
+
+@app.post("/products/sync-stock")
+def sync_product_stock(updates: List[ProductStockUpdate]):
+    """
+    Called by Spring Boot after stock changes (order confirmed, SAV restock, etc.).
+    Updates the in-memory product_meta stock values so recommendations stay accurate.
+    """
+    updated = 0
+    for u in updates:
+        if u.product_id in product_meta:
+            product_meta[u.product_id]["stock"] = max(0, u.stock)
+            updated += 1
+        else:
+            # Unknown product — add a placeholder so it can be tracked
+            product_meta[u.product_id] = {
+                "name": u.product_id, "category": "", "price": 0.0,
+                "stock": max(0, u.stock)
+            }
+            updated += 1
+    _save_interactions()
+    return {"updated": updated, "total_products": len(product_meta)}
+
+
+@app.post("/products/refresh")
+def refresh_product_catalog():
+    """
+    Force a full re-sync of product catalog (name, price, category, stock) from MongoDB.
+    Call this after bulk stock changes or product approvals.
+    """
+    db = _get_mongo_db()
+    if db is None:
+        raise HTTPException(503, "MongoDB not available")
+    try:
+        cat_map = {str(c["_id"]): c.get("name", "") for c in db["categories"].find({}, {"name": 1})}
+        refreshed = 0
+        for doc in db["products"].find(
+            {"status": "APPROVED"},
+            {"name": 1, "price": 1, "categoryIds": 1, "stock": 1, "quantity": 1}
+        ):
+            pid = str(doc["_id"])
+            cat_ids = doc.get("categoryIds", [])
+            category = cat_map.get(str(cat_ids[0]), "") if cat_ids else ""
+            raw_stock = doc.get("stock") or doc.get("quantity") or 0
+            product_meta[pid] = {
+                "name":     doc.get("name", "Product"),
+                "price":    float(doc.get("price") or 0),
+                "category": category,
+                "stock":    int(raw_stock),
+            }
+            refreshed += 1
+        _save_interactions()
+        print(f"[INFO] Product catalog refreshed: {refreshed} products")
+        return {"refreshed": refreshed, "timestamp": datetime.now(timezone.utc).isoformat()}
+    except Exception as e:
+        raise HTTPException(500, f"Refresh failed: {e}")
+
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8007)

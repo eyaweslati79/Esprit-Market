@@ -121,10 +121,18 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     df["high_rated_passenger"]= (df["passenger_rating"] >= 4.5).astype(int)
     df["low_rated_passenger"] = (df["passenger_rating"] < 3.5).astype(int)
 
-    # Time-of-day dummies + interaction with fare_per_km
+    # Dummy-encode time_of_day first (no drop_first here — matches inference)
     df = pd.get_dummies(df, columns=["time_of_day"], prefix="tod")
+    # Cast bool dummies to int to ensure consistent dtype with inference
     for col in [c for c in df.columns if c.startswith("tod_")]:
+        df[col] = df[col].astype(int)
         df[f"ix_{col}_fare"] = df[col] * df["fare_per_km"]
+
+    # Dummy-encode remaining object columns (gender) with drop_first=True
+    obj_cols = [c for c in df.select_dtypes(include="object").columns
+                if c not in ("driver_decision",)]
+    if obj_cols:
+        df = pd.get_dummies(df, columns=obj_cols, drop_first=True)
 
     return df
 
@@ -161,7 +169,7 @@ def train():
         lambda x: 1 if str(x).upper() in ["ACCEPT", "1", "1.0"] else 0
     )
     X = df.drop(columns=["driver_decision"])
-    X = pd.get_dummies(X, drop_first=True)
+    # engineer_features already handles all get_dummies — no second call needed
     feature_names = X.columns.tolist()
 
     X_train, X_test, y_train, y_test = train_test_split(

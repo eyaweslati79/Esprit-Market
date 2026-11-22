@@ -6,7 +6,11 @@ public enum NotificationType {
     RIDE_UPDATE,             // Carpooling module: ride updates, cancellations, etc.
     NEGOTIATION_ACCEPTED,    // Triggered when a provider accepts a client's offer
     NEGOTIATION_PROPOSAL,    // New offer or counter-offer received
-    COUPON_ALERT,           // Provider created a new coupon available for customers
+    COUPON_ALERT,            // Provider created a new coupon available for customers
     CART_EXPIRATION_WARNING, // Cart will expire in 24 hours
-    CART_EXPIRATION_URGENT   // Cart will expire very soon (< 30 minutes)
+    CART_EXPIRATION_URGENT,  // Cart will expire very soon (< 30 minutes)
+    LOYALTY_BOOST,           // User unlocked a dynamic loyalty boost
+    LOYALTY_COUPON,          // Auto-generated re-engagement coupon for inactive user
+    LOYALTY_POINTS_EXPIRING, // Points are about to expire
+    LOYALTY_LEVEL_UP         // User reached a new loyalty tier
 }

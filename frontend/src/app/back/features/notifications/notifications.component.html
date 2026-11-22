@@ -91,7 +91,7 @@
           @for (s of [{v:'', l:'All'}, {v:'unread', l:'Unread'}, {v:'read', l:'Read'}]; track s.v) {
             <button type="button" (click)="setStatusFilter(s.v)"
                     class="rounded-lg px-3 py-1.5 text-xs font-black transition"
-                    [class]="statusFilter() === s.v
+                    [ngClass]="statusFilter() === s.v
                       ? 'bg-primary text-white'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'">
               {{ s.l }}
@@ -105,7 +105,7 @@
           @for (d of [{v:'today', l:'Today'}, {v:'week', l:'7 days'}, {v:'month', l:'30 days'}]; track d.v) {
             <button type="button" (click)="setDateFilter(d.v)"
                     class="rounded-lg px-3 py-1.5 text-xs font-black transition"
-                    [class]="dateFilter() === d.v
+                    [ngClass]="dateFilter() === d.v
                       ? 'bg-amber-500 text-white'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'">
               {{ d.l }}
@@ -135,7 +135,7 @@
         <!-- All types chip -->
         <button type="button" (click)="setTypeFilter('')"
                 class="rounded-full border px-3 py-1 text-[11px] font-black transition"
-                [class]="!typeFilter()
+                [ngClass]="!typeFilter()
                   ? 'border-primary bg-primary text-white'
                   : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-primary/40'">
           All
@@ -146,7 +146,7 @@
         @for (type of availableTypes(); track type) {
           <button type="button" (click)="setTypeFilter(type)"
                   class="flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-black transition"
-                  [class]="typeFilter() === type
+                  [ngClass]="typeFilter() === type
                     ? 'border-primary bg-primary text-white'
                     : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-primary/40'">
             <span>{{ getTypeMeta(type).icon }}</span>
@@ -310,7 +310,7 @@
             @for (t of broadcastTypes; track t.value) {
               <button type="button" (click)="broadcastType.set(t.value)"
                       class="flex flex-col items-center gap-1 rounded-xl border px-3 py-3 text-xs font-black transition"
-                      [class]="broadcastType() === t.value
+                      [ngClass]="broadcastType() === t.value
                         ? 'border-primary bg-primary/10 text-primary'
                         : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-primary/40 hover:bg-primary/5'">
                 <span class="text-lg">{{ t.icon }}</span>

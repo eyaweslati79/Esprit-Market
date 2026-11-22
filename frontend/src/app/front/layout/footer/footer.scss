@@ -1,0 +1,335 @@
+// ── Footer Root ───────────────────────────────────────────────────────────────
+.ft-root {
+  position: relative;
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
+}
+
+// Animated dark red/black gradient background
+.ft-bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(160deg, #0d0000 0%, #1a0000 30%, #2d0000 55%, #0d0000 80%, #1a0000 100%);
+  background-size: 300% 300%;
+  animation: ftBgShift 12s ease-in-out infinite alternate;
+  z-index: 0;
+}
+
+@keyframes ftBgShift {
+  0%   { background-position: 0% 0%; }
+  100% { background-position: 100% 100%; }
+}
+
+// Ambient glow blobs
+.ft-glow-left {
+  position: absolute;
+  top: 10%;
+  left: -10%;
+  width: 400px;
+  height: 400px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(128,0,0,.35) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+  animation: ftGlowPulse 6s ease-in-out infinite alternate;
+}
+
+.ft-glow-right {
+  position: absolute;
+  bottom: 5%;
+  right: -8%;
+  width: 350px;
+  height: 350px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(180,0,0,.25) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+  animation: ftGlowPulse 8s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes ftGlowPulse {
+  from { transform: scale(1);   opacity: .7; }
+  to   { transform: scale(1.2); opacity: 1;  }
+}
+
+// ── Newsletter strip ──────────────────────────────────────────────────────────
+.ft-newsletter {
+  position: relative;
+  z-index: 1;
+  border-bottom: 1px solid rgba(255,80,80,.15);
+  background: rgba(255,255,255,.03);
+  backdrop-filter: blur(4px);
+}
+
+.ft-nl-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2.5rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.ft-nl-tag {
+  display: inline-block;
+  font-size: .65rem;
+  font-weight: 900;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: #ff9999;
+  margin-bottom: .35rem;
+}
+
+.ft-nl-title {
+  font-size: 1.3rem;
+  font-weight: 900;
+  color: #fff;
+  margin: 0 0 .25rem;
+}
+
+.ft-nl-sub {
+  font-size: .8rem;
+  color: rgba(255,255,255,.55);
+  margin: 0;
+}
+
+.ft-nl-form {
+  display: flex;
+  gap: .5rem;
+  flex-shrink: 0;
+}
+
+.ft-nl-input {
+  padding: .7rem 1.1rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255,80,80,.3);
+  background: rgba(255,255,255,.06);
+  color: #fff;
+  font-size: .82rem;
+  width: 240px;
+  outline: none;
+  transition: border-color .2s, background .2s;
+
+  &::placeholder { color: rgba(255,255,255,.35); }
+  &:focus {
+    border-color: rgba(255,80,80,.7);
+    background: rgba(255,255,255,.1);
+  }
+}
+
+.ft-nl-btn {
+  padding: .7rem 1.4rem;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #800000, #a52a2a);
+  color: #fff;
+  font-size: .82rem;
+  font-weight: 900;
+  cursor: pointer;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  transition: transform .2s, box-shadow .2s;
+  box-shadow: 0 4px 16px rgba(128,0,0,.4);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(128,0,0,.6);
+  }
+}
+
+// ── Main grid ─────────────────────────────────────────────────────────────────
+.ft-main {
+  position: relative;
+  z-index: 1;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 4rem 2rem 3rem;
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 3rem;
+
+  @media (max-width: 1024px) { grid-template-columns: 1fr 1fr; }
+  @media (max-width: 640px)  { grid-template-columns: 1fr; }
+}
+
+// Brand column
+.ft-brand { }
+
+.ft-logo {
+  height: 52px;
+  width: auto;
+  margin-bottom: 1.1rem;
+  filter: brightness(1.1);
+}
+
+.ft-tagline {
+  font-size: .95rem;
+  font-weight: 900;
+  color: #ff9999;
+  line-height: 1.4;
+  margin: 0 0 .75rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.ft-desc {
+  font-size: .8rem;
+  color: rgba(255,255,255,.5);
+  line-height: 1.7;
+  margin: 0 0 1.5rem;
+}
+
+// Trust badges
+.ft-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-bottom: 1.5rem;
+}
+
+.ft-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  padding: .3rem .75rem;
+  border-radius: 20px;
+  border: 1px solid rgba(255,80,80,.25);
+  background: rgba(255,80,80,.07);
+  font-size: .65rem;
+  font-weight: 800;
+  color: rgba(255,255,255,.7);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.ft-badge-icon {
+  width: 11px;
+  height: 11px;
+  color: #ff9999;
+}
+
+// Social links
+.ft-socials {
+  display: flex;
+  gap: .6rem;
+}
+
+.ft-social {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,80,80,.25);
+  background: rgba(255,255,255,.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,.6);
+  transition: background .2s, color .2s, transform .2s, border-color .2s;
+
+  svg { width: 16px; height: 16px; }
+
+  &:hover {
+    background: #800000;
+    color: #fff;
+    border-color: #800000;
+    transform: translateY(-3px);
+  }
+}
+
+// ── Link columns ──────────────────────────────────────────────────────────────
+.ft-col { }
+
+.ft-col-title {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .72rem;
+  font-weight: 900;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  margin: 0 0 1.25rem;
+  padding-bottom: .75rem;
+  border-bottom: 1px solid rgba(255,80,80,.2);
+}
+
+.ft-col-icon {
+  width: 14px;
+  height: 14px;
+  color: #ff6666;
+  flex-shrink: 0;
+}
+
+.ft-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+}
+
+.ft-link {
+  font-size: .8rem;
+  color: rgba(255,255,255,.5);
+  text-decoration: none;
+  transition: color .2s, padding-left .2s;
+  display: inline-block;
+
+  &:hover {
+    color: #fff;
+    padding-left: 4px;
+  }
+}
+
+.ft-link-cta {
+  color: #ff9999 !important;
+  font-weight: 800;
+  margin-top: .3rem;
+
+  &:hover { color: #fff !important; }
+}
+
+// ── Bottom bar ────────────────────────────────────────────────────────────────
+.ft-bottom {
+  position: relative;
+  z-index: 1;
+  border-top: 1px solid rgba(255,255,255,.07);
+}
+
+.ft-bottom-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 1.25rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .75rem;
+}
+
+.ft-copy {
+  font-size: .72rem;
+  color: rgba(255,255,255,.3);
+  margin: 0;
+  font-weight: 600;
+}
+
+.ft-bottom-links {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.ft-bottom-link {
+  font-size: .7rem;
+  font-weight: 700;
+  color: rgba(255,255,255,.3);
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  transition: color .2s;
+
+  &:hover { color: #ff9999; }
+}

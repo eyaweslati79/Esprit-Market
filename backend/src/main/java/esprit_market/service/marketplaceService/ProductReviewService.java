@@ -12,6 +12,7 @@ import esprit_market.repository.marketplaceRepository.ProductReviewRepository;
 import esprit_market.repository.marketplaceRepository.ShopRepository;
 import esprit_market.repository.userRepository.UserRepository;
 import esprit_market.service.userService.TrustService;
+import esprit_market.utils.BadWordFilter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
@@ -36,34 +37,39 @@ public class ProductReviewService {
     private final ShopRepository shopRepository;
     private final UserRepository userRepository;
     private final OrderItemRepository orderItemRepository;
+    private final esprit_market.repository.cartRepository.OrderRepository orderRepository;
     private final TrustService trustService;
     
     /**
-     * Create a new product review
+     * Create a new product review — works for any authenticated user.
+     * If the user has a matching order item, the review is marked as verified.
      */
     @Transactional
     public ProductReviewDTO createReview(ProductReviewDTO dto) {
-        // Validate customer hasn't already reviewed this order item
         ObjectId customerId = new ObjectId(dto.getCustomerId());
-        ObjectId orderItemId = new ObjectId(dto.getOrderItemId());
-        
-        if (reviewRepository.existsByCustomerIdAndOrderItemId(customerId, orderItemId)) {
+        ObjectId productId  = new ObjectId(dto.getProductId());
+
+        // Prevent duplicate reviews per product per customer
+        if (reviewRepository.existsByCustomerIdAndProductId(customerId, productId)) {
             throw new IllegalStateException("You have already reviewed this product");
         }
-        
-        // Validate order item exists and belongs to customer
-        OrderItem orderItem = orderItemRepository.findById(orderItemId)
-                .orElseThrow(() -> new IllegalArgumentException("Order item not found"));
-        
-        // Get product and shop info
-        ObjectId productId = new ObjectId(dto.getProductId());
+
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new IllegalArgumentException("Product not found"));
-        
+
         Shop shop = shopRepository.findById(product.getShopId())
                 .orElseThrow(() -> new IllegalArgumentException("Shop not found"));
-        
-        // Create review
+
+        // Determine if this is a verified purchase
+        boolean verified = false;
+        ObjectId orderItemId = null;
+        if (dto.getOrderItemId() != null && !dto.getOrderItemId().isBlank()) {
+            try {
+                orderItemId = new ObjectId(dto.getOrderItemId());
+                verified = orderItemRepository.findById(orderItemId).isPresent();
+            } catch (Exception ignored) {}
+        }
+
         ProductReview review = ProductReview.builder()
                 .productId(productId)
                 .shopId(shop.getId())
@@ -71,20 +77,18 @@ public class ProductReviewService {
                 .customerId(customerId)
                 .orderItemId(orderItemId)
                 .rating(dto.getRating())
-                .comment(dto.getComment())
+                .comment(BadWordFilter.filter(dto.getComment()))
                 .createdAt(LocalDateTime.now())
-                .verified(true)
+                .verified(verified)
                 .approved(true)
                 .build();
-        
+
         ProductReview saved = reviewRepository.save(review);
-        
-        // ✅ Trigger trust score update
         trustService.onProductReviewed(saved.getId());
-        
-        log.info("Review created for product {} by customer {}, rating: {}", 
-                productId, customerId, dto.getRating());
-        
+
+        log.info("Review created for product {} by customer {}, rating: {}, verified: {}",
+                productId, customerId, dto.getRating(), verified);
+
         return toDTO(saved);
     }
     
@@ -99,6 +103,43 @@ public class ProductReviewService {
                 .collect(Collectors.toList());
     }
     
+    /**
+     * Get order items for the current user that are eligible to review for a given product
+     * (purchased but not yet reviewed)
+     */
+    public List<java.util.Map<String, String>> getReviewableOrderItems(String productId) {
+        ObjectId productObjId = new ObjectId(productId);
+
+        // Get current user
+        org.springframework.security.core.Authentication auth =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getName() == null) return java.util.Collections.emptyList();
+
+        User user = userRepository.findByEmail(auth.getName()).orElse(null);
+        if (user == null) return java.util.Collections.emptyList();
+
+        // Find all order items for this product
+        List<OrderItem> items = orderItemRepository.findByProductId(productObjId);
+
+        // Filter: belongs to this user's orders AND not yet reviewed
+        return items.stream()
+                .filter(item -> {
+                    // Check order belongs to user
+                    return orderRepository.findById(item.getOrderId())
+                            .map(order -> order.getUser() != null &&
+                                    order.getUser().getId().equals(user.getId()))
+                            .orElse(false);
+                })
+                .filter(item -> !reviewRepository.existsByCustomerIdAndOrderItemId(user.getId(), item.getId()))
+                .map(item -> {
+                    java.util.Map<String, String> m = new java.util.HashMap<>();
+                    m.put("orderItemId", item.getId().toHexString());
+                    m.put("productName", item.getProductName());
+                    return m;
+                })
+                .collect(Collectors.toList());
+    }
+
     /**
      * Get all reviews for a seller
      */

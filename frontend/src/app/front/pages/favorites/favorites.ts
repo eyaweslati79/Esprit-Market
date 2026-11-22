@@ -8,6 +8,7 @@ import { ProductService } from '../../core/product.service';
 import { CartService } from '../../core/cart.service';
 import { ToastService } from '../../core/toast.service';
 import { Product, StockStatus } from '../../models/product';
+import { MarketplaceMLService, MarketplaceMLInsight } from '../../core/marketplace-ml.service';
 
 interface FavoriteItem {
   favoriteId: string;
@@ -26,9 +27,12 @@ export class Favorites implements OnInit {
   private productService = inject(ProductService);
   private cartService = inject(CartService);
   private toastService = inject(ToastService);
+  readonly mlService = inject(MarketplaceMLService);
 
   favoriteItems = signal<FavoriteItem[]>([]);
   isLoading = signal(true);
+  // Map of productId → ML insight
+  mlInsights = signal<Map<string, MarketplaceMLInsight>>(new Map());
 
   itemCount = computed(() => this.favoriteItems().length);
   outOfStockCount = computed(() =>
@@ -71,6 +75,14 @@ export class Favorites implements OnInit {
         });
         this.favoriteItems.set(items);
         this.isLoading.set(false);
+
+        // Load ML insights for all favorited products (non-blocking)
+        const ids = items.map(i => i.product.id).filter(Boolean);
+        if (ids.length > 0) {
+          this.mlService.getBatchInsights(ids).subscribe(map => {
+            this.mlInsights.set(map);
+          });
+        }
       });
     }, 600);
   }

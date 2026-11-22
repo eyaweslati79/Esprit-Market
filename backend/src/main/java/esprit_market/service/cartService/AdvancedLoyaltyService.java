@@ -148,15 +148,45 @@ public class AdvancedLoyaltyService {
                 .map(entry -> {
                     ObjectId shopId = entry.getKey();
                     ShopStats stats = entry.getValue();
-                    
-                    // Try to get shop name from Shop collection
                     String shopName = getShopName(shopId);
-                    
+
+                    // ── Per-shop discount calculation ──────────────────────────
+                    // Total spent across all top shops
+                    double totalSpentAllShops = shopStatsMap.values().stream()
+                            .mapToDouble(s -> s.totalSpent).sum();
+
+                    // Get user's loyalty card and config
+                    LoyaltyCard card = loyaltyCardRepository.findByUser(
+                            userRepository.findById(userId).orElse(null)).orElse(null);
+                    int totalPoints = (card != null && card.getPoints() != null) ? card.getPoints() : 0;
+
+                    // Points proportional to spending at this shop
+                    int pointsFromShop = totalSpentAllShops > 0
+                            ? (int) Math.round(totalPoints * (stats.totalSpent / totalSpentAllShops))
+                            : 0;
+
+                    // Convert points to TND using config rate (e.g. 10 pts = 1 TND → rate = 0.1)
+                    LoyaltyConfig config = configService.getActiveConfig();
+                    double rate = config.getPointsToCurrencyRate() != null ? config.getPointsToCurrencyRate() : 0.1;
+                    double discountTnd = Math.round(pointsFromShop * rate * 100.0) / 100.0;
+
+                    // Discount % on a 1500 TND example order
+                    double exampleOrder = 1500.0;
+                    double discountPct = exampleOrder > 0
+                            ? Math.min(50.0, (discountTnd / exampleOrder) * 100.0)
+                            : 0.0;
+                    double afterDiscount = Math.round((exampleOrder - discountTnd) * 100.0) / 100.0;
+
                     return ShopSummaryDTO.builder()
                         .shopId(shopId.toHexString())
                         .shopName(shopName)
                         .orderCount(stats.orderCount)
                         .totalSpent(stats.totalSpent)
+                        .pointsFromShop(pointsFromShop)
+                        .discountPercentage(Math.round(discountPct * 10.0) / 10.0)
+                        .maxDiscountTnd(discountTnd)
+                        .exampleOrderOriginal(exampleOrder)
+                        .exampleOrderAfterDiscount(afterDiscount)
                         .build();
                 })
                 .collect(Collectors.toList());

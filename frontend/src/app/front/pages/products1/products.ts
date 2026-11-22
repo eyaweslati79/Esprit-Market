@@ -8,6 +8,7 @@ import { ProductService } from '../../core/product.service';
 import { CategoryService } from '../../core/shop.service';
 import { AuthService } from '../../core/auth.service';
 import { UserRole } from '../../models/user.model';
+import { CATEGORY_NAMES } from '../../core/categories.config';
 
 @Component({
   selector: 'app-products',
@@ -47,8 +48,8 @@ export class Products implements OnInit {
   viewMode = signal<'grid' | 'list'>('grid');
   showFilters = signal<boolean>(true);
 
-  // Categories - loaded from backend  
-  categories = signal<string[]>(['Toutes', 'Électronique', 'Livres', 'Mobilier', 'Gaming', 'Services', 'Autres']);
+  // Categories — consistent with the rest of the app
+  categories = signal<string[]>(['All', ...CATEGORY_NAMES]);
   conditions = ['Tous', 'NEUF', 'COMME_NEUF', 'BON', 'CORRECT'];
 
   // Computed
@@ -66,7 +67,7 @@ export class Products implements OnInit {
     }
 
     // Category filter
-    if (this.selectedCategory() !== 'Toutes') {
+    if (this.selectedCategory() !== 'All') {
       filtered = filtered.filter(p => p.category === this.selectedCategory());
     }
 

@@ -34,6 +34,15 @@ public class Product {
     
     // ✅ Added missing fields
     private int quantity; // For compatibility with existing code
+
+    // ── Flash Sale ────────────────────────────────────────────────────────────
+    private boolean flashSaleActive;
+    private Double flashSalePrice;
+    private LocalDateTime flashSaleStartTime;
+    private LocalDateTime flashSaleEndTime;
+    /** Optional: cap how many units can be sold at flash price */
+    private Integer flashSaleMaxQuantity;
+    private Integer flashSaleSoldQuantity;
     
     @Builder.Default
     private ProductStatus status = ProductStatus.PENDING;

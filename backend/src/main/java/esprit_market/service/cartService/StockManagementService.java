@@ -2,11 +2,14 @@ package esprit_market.service.cartService;
 
 import esprit_market.entity.marketplace.Product;
 import esprit_market.repository.marketplaceRepository.ProductRepository;
+import esprit_market.service.mlService.PredictiveAiService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.bson.types.ObjectId;
+
+import java.util.List;
 
 /**
  * Service responsible for managing product stock operations.
@@ -18,6 +21,7 @@ import org.bson.types.ObjectId;
 public class StockManagementService {
     
     private final ProductRepository productRepository;
+    private final PredictiveAiService predictiveAiService;
     
     /**
      * Validates if sufficient stock is available for the requested quantity.
@@ -95,6 +99,9 @@ public class StockManagementService {
         
         // Emit stock change event for real-time updates
         logStockChange(savedProduct, quantity, "REDUCED");
+
+        // Notify ML service of the new stock level (fire-and-forget)
+        _pushStockToMl(savedProduct);
     }
     
     /**
@@ -132,6 +139,9 @@ public class StockManagementService {
         
         // Emit stock change event for real-time updates
         logStockChange(savedProduct, quantity, "RESTORED");
+
+        // Notify ML service of the new stock level (fire-and-forget)
+        _pushStockToMl(savedProduct);
     }
     
     /**
@@ -232,5 +242,22 @@ public class StockManagementService {
         
         // Here you could emit events for real-time UI updates:
         // applicationEventPublisher.publishEvent(new StockChangeEvent(product.getId(), product.getStock()));
+    }
+
+    /**
+     * Push the updated stock level to the ML service so recommendations
+     * and negotiation predictions stay accurate. Fire-and-forget.
+     */
+    private void _pushStockToMl(Product product) {
+        try {
+            predictiveAiService.syncStock(List.of(
+                PredictiveAiService.StockSyncItem.builder()
+                    .product_id(product.getId().toHexString())
+                    .stock(product.getStock())
+                    .build()
+            ));
+        } catch (Exception e) {
+            log.debug("ML stock sync skipped: {}", e.getMessage());
+        }
     }
 }

@@ -17,7 +17,9 @@ import esprit_market.repository.cartRepository.CartItemRepository;
 import esprit_market.repository.cartRepository.CartRepository;
 import esprit_market.repository.cartRepository.OrderItemRepository;
 import esprit_market.repository.cartRepository.OrderRepository;
+import esprit_market.entity.marketplace.Favoris;
 import esprit_market.repository.marketplaceRepository.CategoryRepository;
+import esprit_market.repository.marketplaceRepository.FavorisRepository;
 import esprit_market.repository.marketplaceRepository.ProductRepository;
 import esprit_market.repository.userRepository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -33,7 +35,6 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
-
 /**
  * Recommendation service combining two layers:
  *
@@ -61,6 +62,7 @@ public class RecommendationService {
     private final OrderItemRepository orderItemRepository;
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
+    private final FavorisRepository favorisRepository;
 
     public RecommendationService(
             @Qualifier("recommendationWebClient") WebClient webClient,
@@ -72,7 +74,8 @@ public class RecommendationService {
             OrderRepository orderRepository,
             OrderItemRepository orderItemRepository,
             CartRepository cartRepository,
-            CartItemRepository cartItemRepository) {
+            CartItemRepository cartItemRepository,
+            FavorisRepository favorisRepository) {
         this.webClient = webClient;
         this.config = config;
         this.mockService = mockService;
@@ -83,6 +86,7 @@ public class RecommendationService {
         this.orderItemRepository = orderItemRepository;
         this.cartRepository = cartRepository;
         this.cartItemRepository = cartItemRepository;
+        this.favorisRepository = favorisRepository;
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -96,9 +100,11 @@ public class RecommendationService {
     }
 
     /**
-     * Collect all product IDs the user has interacted with, weighted by signal:
-     *   purchase → 5.0  (completed orders)
-     *   cart     → 3.0  (current cart items)
+     * Collect all product IDs the user has interacted with, weighted by signal strength:
+     *   purchase  → 5.0  (completed orders — strongest intent)
+     *   favorite  → 4.0  (wishlisted — strong interest)
+     *   cart      → 3.5  (currently in cart — active intent)
+     *   cart hist → 3.0  (past cart items — moderate interest)
      */
     private Map<String, Double> getUserInteractionScores(String userId) {
         Map<String, Double> scores = new LinkedHashMap<>();
@@ -107,7 +113,7 @@ public class RecommendationService {
             User user = userRepository.findById(uid).orElse(null);
             if (user == null) return scores;
 
-            // Purchase history
+            // ── Purchase history (weight 5.0) ─────────────────────────────────
             List<Order> orders = orderRepository.findByUser(user);
             if (!orders.isEmpty()) {
                 List<ObjectId> orderIds = orders.stream().map(Order::getId).collect(Collectors.toList());
@@ -118,16 +124,25 @@ public class RecommendationService {
                 }
             }
 
-            // Cart history
+            // ── Favorites / Wishlist (weight 4.0) ────────────────────────────
+            List<Favoris> favorites = favorisRepository.findByUserId(uid);
+            for (Favoris fav : favorites) {
+                if (fav.getProductId() != null) {
+                    scores.merge(fav.getProductId().toHexString(), 4.0, Double::sum);
+                }
+            }
+
+            // ── Active cart items (weight 3.5) ────────────────────────────────
             List<Cart> carts = cartRepository.findByUserId(uid);
             if (!carts.isEmpty()) {
                 List<ObjectId> cartIds = carts.stream().map(Cart::getId).collect(Collectors.toList());
                 for (CartItem item : cartItemRepository.findByCartIdIn(cartIds)) {
                     if (item.getProductId() != null) {
-                        scores.merge(item.getProductId().toHexString(), 3.0, Double::sum);
+                        scores.merge(item.getProductId().toHexString(), 3.5, Double::sum);
                     }
                 }
             }
+
         } catch (Exception e) {
             log.warn("Could not load interaction history for user {}: {}", userId, e.getMessage());
         }
@@ -137,6 +152,10 @@ public class RecommendationService {
     // ── Layer 1: MongoDB-based personalization ────────────────────────────────
 
     private RecommendationDTO buildPersonalizedFromMongo(String userId, int topK) {
+        return buildPersonalizedFromMongo(userId, topK, null);
+    }
+
+    private RecommendationDTO buildPersonalizedFromMongo(String userId, int topK, String categoryFilter) {
         Map<String, String> catNames = buildCategoryNameMap();
 
         // All approved products
@@ -144,12 +163,15 @@ public class RecommendationService {
         if (allApproved.isEmpty()) {
             allApproved = productRepository.findAll();
         }
+
+        final String catFilterLower = (categoryFilter != null && !categoryFilter.isBlank())
+                ? categoryFilter.trim().toLowerCase() : null;
+
         Map<String, Product> productMap = allApproved.stream()
                 .collect(Collectors.toMap(p -> p.getId().toHexString(), p -> p, (a, b) -> a));
 
-        // User interaction history
+        // User interaction history — used for category affinity, NOT for exclusion
         Map<String, Double> interactionScores = getUserInteractionScores(userId);
-        Set<String> alreadySeen = interactionScores.keySet();
 
         // Category affinity: categoryId → cumulative score
         Map<String, Double> categoryAffinity = new LinkedHashMap<>();
@@ -163,32 +185,55 @@ public class RecommendationService {
         }
 
         boolean hasHistory = !interactionScores.isEmpty();
-        log.info("User {} — hasHistory={}, affinity categories: {}",
-                userId, hasHistory, categoryAffinity.size());
+        log.info("User {} — hasHistory={}, affinity categories: {}, categoryFilter: {}",
+                userId, hasHistory, categoryAffinity.size(), catFilterLower);
 
-        // Score every unseen in-stock approved product
+        // Score ALL in-stock approved products (no exclusion — diversity matters)
         Map<String, Double> candidateScores = new LinkedHashMap<>();
         for (Product p : allApproved) {
             String pid = p.getId().toHexString();
-            if (alreadySeen.contains(pid) || p.getStock() <= 0) continue;
+            if (p.getStock() <= 0) continue;
+
+            // Category filter
+            if (catFilterLower != null) {
+                boolean matchesCategory = false;
+                if (p.getCategoryIds() != null) {
+                    for (ObjectId catId : p.getCategoryIds()) {
+                        String catName = catNames.getOrDefault(catId.toHexString(), "").toLowerCase();
+                        if (!catName.isEmpty() && (catName.contains(catFilterLower) || catFilterLower.contains(catName))) {
+                            matchesCategory = true;
+                            break;
+                        }
+                    }
+                }
+                if (!matchesCategory) continue;
+            }
 
             double score = 0.0;
 
-            // Category affinity signal (strongest)
+            // Category affinity (strongest signal)
             if (hasHistory && p.getCategoryIds() != null) {
                 for (ObjectId catId : p.getCategoryIds()) {
                     score += categoryAffinity.getOrDefault(catId.toHexString(), 0.0) * 2.0;
                 }
             }
 
-            // Recency bonus (newer = slightly higher)
+            // Recency bonus — newer products get a boost
             if (p.getCreatedAt() != null) {
                 long daysOld = ChronoUnit.DAYS.between(p.getCreatedAt(), java.time.LocalDateTime.now());
-                score += Math.max(0, 30 - daysOld) * 0.1;
+                score += Math.max(0, 60 - daysOld) * 0.15; // 60-day window
             }
 
             // Stock depth bonus
-            score += Math.min(p.getStock(), 10) * 0.05;
+            score += Math.min(p.getStock(), 20) * 0.03;
+
+            // Small random jitter for diversity — prevents identical ordering every request
+            score += Math.random() * 0.5;
+
+            // Slight penalty for already-purchased products (show them lower, not hidden)
+            if (interactionScores.containsKey(pid)) {
+                score *= 0.4;
+            }
 
             candidateScores.put(pid, score);
         }
@@ -203,6 +248,17 @@ public class RecommendationService {
         if (ranked.isEmpty()) {
             ranked = productMap.entrySet().stream()
                     .filter(e -> e.getValue().getStock() > 0)
+                    .filter(e -> {
+                        if (catFilterLower == null) return true;
+                        Product p = e.getValue();
+                        if (p.getCategoryIds() != null) {
+                            for (ObjectId catId : p.getCategoryIds()) {
+                                String catName = catNames.getOrDefault(catId.toHexString(), "").toLowerCase();
+                                if (!catName.isEmpty() && (catName.contains(catFilterLower) || catFilterLower.contains(catName))) return true;
+                            }
+                        }
+                        return false;
+                    })
                     .sorted((a, b) -> {
                         if (a.getValue().getCreatedAt() == null) return 1;
                         if (b.getValue().getCreatedAt() == null) return -1;
@@ -226,14 +282,22 @@ public class RecommendationService {
                 catName = catNames.getOrDefault(p.getCategoryIds().get(0).toHexString(), "");
             }
 
+            boolean alreadyBought = interactionScores.containsKey(entry.getKey());
+
             String reason;
             if (!hasHistory) {
-                reason = "Trending in the marketplace";
+                reason = catFilterLower != null
+                        ? "Popular in " + (catName.isEmpty() ? categoryFilter : catName)
+                        : "Trending in the marketplace";
+            } else if (alreadyBought) {
+                reason = "You might want this again";
             } else if (p.getCategoryIds() != null && p.getCategoryIds().stream()
                     .anyMatch(c -> categoryAffinity.containsKey(c.toHexString()))) {
                 reason = "Based on your interest in " + (catName.isEmpty() ? "this category" : catName);
             } else {
-                reason = "Popular in the marketplace";
+                reason = catFilterLower != null
+                        ? "Similar to what you're viewing"
+                        : "Popular in the marketplace";
             }
 
             String imageUrl = (p.getImages() != null && !p.getImages().isEmpty())
@@ -253,8 +317,8 @@ public class RecommendationService {
         }).filter(Objects::nonNull).collect(Collectors.toList());
 
         String algo = hasHistory
-                ? "category-affinity+purchase-history+cart-history"
-                : "popularity+recency";
+                ? "purchase-history+favorites+cart+category-affinity+diversity"
+                : "popularity+recency+diversity";
 
         return RecommendationDTO.builder()
                 .userId(userId)
@@ -268,89 +332,342 @@ public class RecommendationService {
     // ── Layer 2: ML boost (optional) ─────────────────────────────────────────
 
     /**
-     * Try to get ML scores and blend them into the MongoDB-ranked list.
-     * Uses a 5-second timeout — never blocks the response if ML is slow.
+     * Call the ML service's context-aware endpoints.
+     *
+     * context = "home"    → GET /recommend/home/{userId}
+     * context = "product" → GET /recommend/product/{userId}?product_id={productId}
+     * context = "cart"    → POST /recommend/cart  {user_id, cart_pids}
+     * default             → GET /recommend/{userId}?category={category}
      */
     private RecommendationDTO tryMlEnrichment(RecommendationDTO mongoResult, String userId) {
+        return tryMlEnrichment(mongoResult, userId, "generic", null, null);
+    }
+
+    private RecommendationDTO tryMlEnrichment(
+            RecommendationDTO mongoResult,
+            String userId,
+            String context,
+            String productId,
+            List<String> cartPids) {
+
         if (!config.isEnabled()) return mongoResult;
         try {
-            RecommendationDTO mlResult = webClient
-                    .get()
-                    .uri("/recommend/{userId}", userId)
-                    .retrieve()
-                    .bodyToMono(RecommendationDTO.class)
-                    .timeout(Duration.ofSeconds(5))
-                    .onErrorReturn(null)
-                    .block();
+            RecommendationDTO mlResult = null;
+
+            switch (context) {
+                case "home" -> mlResult = webClient
+                        .get()
+                        .uri("/recommend/home/{userId}?top_n=12", userId)
+                        .retrieve()
+                        .bodyToMono(RecommendationDTO.class)
+                        .timeout(Duration.ofSeconds(5))
+                        .onErrorReturn(null)
+                        .block();
+
+                case "product" -> {
+                    if (productId != null && !productId.isBlank()) {
+                        mlResult = webClient
+                                .get()
+                                .uri(u -> u.path("/recommend/product/{userId}")
+                                        .queryParam("product_id", productId)
+                                        .queryParam("top_n", 8)
+                                        .build(userId))
+                                .retrieve()
+                                .bodyToMono(RecommendationDTO.class)
+                                .timeout(Duration.ofSeconds(5))
+                                .onErrorReturn(null)
+                                .block();
+                    }
+                }
+
+                case "cart" -> {
+                    if (cartPids != null && !cartPids.isEmpty()) {
+                        Map<String, Object> body = new java.util.HashMap<>();
+                        body.put("user_id", userId);
+                        body.put("cart_pids", cartPids);
+                        body.put("top_n", 8);
+                        mlResult = webClient
+                                .post()
+                                .uri("/recommend/cart")
+                                .bodyValue(body)
+                                .retrieve()
+                                .bodyToMono(RecommendationDTO.class)
+                                .timeout(Duration.ofSeconds(5))
+                                .onErrorReturn(null)
+                                .block();
+                    }
+                }
+
+                default -> mlResult = webClient
+                        .get()
+                        .uri("/recommend/{userId}", userId)
+                        .retrieve()
+                        .bodyToMono(RecommendationDTO.class)
+                        .timeout(Duration.ofSeconds(5))
+                        .onErrorReturn(null)
+                        .block();
+            }
 
             if (mlResult == null || mlResult.getRecommendations() == null
                     || mlResult.getRecommendations().isEmpty()) {
                 return mongoResult;
             }
 
-            // ML score map: productId → score
-            Map<String, Double> mlScores = mlResult.getRecommendations().stream()
-                    .filter(r -> r.getProductId() != null && r.getScore() != null)
-                    .collect(Collectors.toMap(
-                            ProductRecommendationDTO::getProductId,
-                            ProductRecommendationDTO::getScore,
-                            (a, b) -> a));
+            // Enrich ML results with real product data from MongoDB
+            Map<String, String> catNames = buildCategoryNameMap();
+            List<Product> allApproved = productRepository.findByStatus(ProductStatus.APPROVED);
+            Map<String, Product> productMap = allApproved.stream()
+                    .collect(Collectors.toMap(p -> p.getId().toHexString(), p -> p, (a, b) -> a));
 
-            // Blend: 60% MongoDB affinity + 40% ML collaborative score
-            List<ProductRecommendationDTO> reRanked = mongoResult.getRecommendations().stream()
+            List<ProductRecommendationDTO> enriched = mlResult.getRecommendations().stream()
                     .map(rec -> {
-                        double mlBoost = mlScores.getOrDefault(rec.getProductId(), 0.0);
-                        double combined = rec.getScore() * 0.6 + mlBoost * 0.4;
-                        String reason = mlBoost > 0.7 ? "Highly recommended for you" : rec.getReason();
+                        Product p = productMap.get(rec.getProductId());
+                        if (p == null) return null;
+
+                        String catName = "";
+                        if (p.getCategoryIds() != null && !p.getCategoryIds().isEmpty()) {
+                            catName = catNames.getOrDefault(p.getCategoryIds().get(0).toHexString(), "");
+                        }
+                        String imageUrl = (p.getImages() != null && !p.getImages().isEmpty())
+                                ? p.getImages().get(0).getUrl() : null;
+
                         return ProductRecommendationDTO.builder()
                                 .productId(rec.getProductId())
-                                .name(rec.getName())
-                                .price(rec.getPrice())
-                                .category(rec.getCategory())
-                                .imageUrl(rec.getImageUrl())
-                                .inStock(rec.getInStock())
-                                .isNegotiable(rec.getIsNegotiable())
-                                .score(Math.min(combined, 1.0))
-                                .reason(reason)
+                                .name(p.getName())
+                                .price(p.getPrice())
+                                .category(catName)
+                                .imageUrl(imageUrl)
+                                .inStock(p.getStock() > 0)
+                                .isNegotiable(false)
+                                .score(rec.getScore() != null ? rec.getScore() : 0.5)
+                                .reason(rec.getReason() != null ? rec.getReason() : "Recommended for you")
                                 .build();
                     })
+                    .filter(Objects::nonNull)
                     .sorted(Comparator.comparingDouble(ProductRecommendationDTO::getScore).reversed())
                     .collect(Collectors.toList());
 
-            mongoResult.setRecommendations(reRanked);
-            mongoResult.setAlgorithmUsed("category-affinity+collaborative-filtering");
-            log.info("ML enrichment applied for user {}", userId);
-            return mongoResult;
+            if (enriched.isEmpty()) return mongoResult;
+
+            RecommendationDTO result = RecommendationDTO.builder()
+                    .userId(userId)
+                    .recommendations(enriched)
+                    .totalCount(enriched.size())
+                    .algorithmUsed("shein-style-" + context + "+collaborative-filtering")
+                    .generatedAt(java.time.Instant.now().toString())
+                    .build();
+
+            log.info("ML enrichment applied for user {} context={} → {} results", userId, context, enriched.size());
+            return result;
 
         } catch (Exception e) {
-            log.debug("ML enrichment skipped for user {}: {}", userId, e.getMessage());
+            log.debug("ML enrichment skipped for user {} context={}: {}", userId, context, e.getMessage());
             return mongoResult;
         }
     }
 
     // ── Public API ────────────────────────────────────────────────────────────
 
-    /**
-     * Get personalized recommendations for a user.
-     *
-     * 1. Build from MongoDB (purchase + cart → category affinity) — always works
-     * 2. Optionally boost with ML collaborative filtering scores
-     * 3. Return top-5 enriched results
-     */
     public RecommendationDTO getRecommendations(String userId) {
-        log.info("Building recommendations for user: {}", userId);
+        return getRecommendations(userId, null);
+    }
 
-        RecommendationDTO result = buildPersonalizedFromMongo(userId, 8);
-        result = tryMlEnrichment(result, userId);
+    /** Generic / home-page recommendations — multi-category personalised feed. */
+    public RecommendationDTO getRecommendations(String userId, String category) {
+        log.info("Building recommendations for user: {} category: {}", userId, category);
 
-        // Trim to 5
-        if (result.getRecommendations().size() > 5) {
-            result.setRecommendations(result.getRecommendations().subList(0, 5));
-            result.setTotalCount(5);
+        RecommendationDTO result = buildPersonalizedFromMongo(userId, 30, category);
+        // Use "home" context when no category filter → multi-category feed
+        result = tryMlEnrichment(result, userId, category == null ? "home" : "generic", null, null);
+
+        if (result.getRecommendations().size() > 12) {
+            result.setRecommendations(result.getRecommendations().subList(0, 12));
+            result.setTotalCount(12);
         }
 
         log.info("Returning {} recommendations for user {} (algo: {})",
                 result.getTotalCount(), userId, result.getAlgorithmUsed());
+        return result;
+    }
+
+    /** Product-page recommendations — ONLY same category as the viewed product. */
+    public RecommendationDTO getProductPageRecommendations(String userId, String productId) {
+        log.info("Product-page recs for user: {} product: {}", userId, productId);
+
+        // Resolve the category of the viewed product
+        String category = null;
+        try {
+            Map<String, String> catNames = buildCategoryNameMap();
+            Product viewed = productRepository.findById(new ObjectId(productId)).orElse(null);
+            if (viewed != null && viewed.getCategoryIds() != null && !viewed.getCategoryIds().isEmpty()) {
+                category = catNames.get(viewed.getCategoryIds().get(0).toHexString());
+            }
+        } catch (Exception e) {
+            log.warn("Could not resolve category for product {}: {}", productId, e.getMessage());
+        }
+
+        RecommendationDTO result = buildPersonalizedFromMongo(userId, 30, category);
+
+        // Exclude the viewed product itself
+        if (result.getRecommendations() != null) {
+            result.setRecommendations(
+                result.getRecommendations().stream()
+                    .filter(r -> !productId.equals(r.getProductId()))
+                    .collect(Collectors.toList())
+            );
+        }
+
+        // Call ML product-page endpoint (same-category, price-similarity boost)
+        result = tryMlEnrichment(result, userId, "product", productId, null);
+
+        if (result.getRecommendations().size() > 8) {
+            result.setRecommendations(result.getRecommendations().subList(0, 8));
+            result.setTotalCount(8);
+        }
+
+        log.info("Product-page: {} recs for user {} product {}", result.getTotalCount(), userId, productId);
+        return result;
+    }
+
+    /** Cart-page recommendations — mix of ALL categories present in the cart. */
+    public RecommendationDTO getCartRecommendations(String userId, List<String> cartProductIds) {
+        log.info("Cart recs for user: {} cartItems: {}", userId, cartProductIds.size());
+
+        if (cartProductIds.isEmpty()) {
+            return RecommendationDTO.builder()
+                    .userId(userId).recommendations(Collections.emptyList())
+                    .totalCount(0).algorithmUsed("empty-cart")
+                    .generatedAt(java.time.Instant.now().toString()).build();
+        }
+
+        // ── Resolve ALL categories of cart items ──────────────────────────────
+        Map<String, String> catNames = buildCategoryNameMap();
+        Set<String> cartCategories = new java.util.LinkedHashSet<>();
+        for (String pid : cartProductIds) {
+            try {
+                Product p = productRepository.findById(new ObjectId(pid)).orElse(null);
+                if (p != null && p.getCategoryIds() != null) {
+                    for (ObjectId catId : p.getCategoryIds()) {
+                        String catName = catNames.get(catId.toHexString());
+                        if (catName != null) cartCategories.add(catName);
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+
+        log.info("Cart categories detected: {}", cartCategories);
+
+        Set<String> cartSet = new java.util.HashSet<>(cartProductIds);
+
+        // ── Layer 1: collect candidates from ALL cart categories equally ──────
+        // Allocate slots evenly across cart categories so no single category dominates.
+        int totalSlots = 30;
+        int slotsPerCat = cartCategories.isEmpty() ? totalSlots
+                : Math.max(4, totalSlots / cartCategories.size());
+
+        List<ProductRecommendationDTO> allCandidates = new ArrayList<>();
+
+        if (cartCategories.isEmpty()) {
+            // No categories resolved — fall back to generic personalised feed
+            RecommendationDTO fallback = buildPersonalizedFromMongo(userId, totalSlots, null);
+            allCandidates.addAll(fallback.getRecommendations());
+        } else {
+            for (String cat : cartCategories) {
+                RecommendationDTO catResult = buildPersonalizedFromMongo(userId, slotsPerCat, cat);
+                if (catResult.getRecommendations() != null) {
+                    allCandidates.addAll(catResult.getRecommendations());
+                }
+            }
+        }
+
+        // Remove products already in the cart
+        List<ProductRecommendationDTO> filtered = allCandidates.stream()
+                .filter(r -> !cartSet.contains(r.getProductId()))
+                // Deduplicate by productId (same product may appear from multiple category queries)
+                .collect(Collectors.collectingAndThen(
+                    Collectors.toMap(
+                        ProductRecommendationDTO::getProductId,
+                        r -> r,
+                        (a, b) -> a.getScore() >= b.getScore() ? a : b,
+                        java.util.LinkedHashMap::new
+                    ),
+                    m -> new ArrayList<>(m.values())
+                ));
+
+        // Sort by score descending
+        filtered.sort(Comparator.comparingDouble(ProductRecommendationDTO::getScore).reversed());
+
+        RecommendationDTO result = RecommendationDTO.builder()
+                .userId(userId)
+                .recommendations(filtered)
+                .totalCount(filtered.size())
+                .algorithmUsed("cart-multi-category+affinity")
+                .generatedAt(java.time.Instant.now().toString())
+                .build();
+
+        // ── Layer 2: ML cart endpoint (multi-category + complementary boost) ──
+        result = tryMlEnrichment(result, userId, "cart", null, cartProductIds);
+
+        // Trim to 8, ensuring category diversity in the final slice
+        List<ProductRecommendationDTO> final8 = ensureCategoryDiversity(
+                result.getRecommendations(), cartCategories, 8);
+        result.setRecommendations(final8);
+        result.setTotalCount(final8.size());
+
+        log.info("Cart: {} recs for user {} (categories: {})", result.getTotalCount(), userId, cartCategories);
+        return result;
+    }
+
+    /**
+     * Interleave results so each cart category gets fair representation
+     * in the final top-N slice.
+     */
+    private List<ProductRecommendationDTO> ensureCategoryDiversity(
+            List<ProductRecommendationDTO> recs,
+            Set<String> cartCategories,
+            int maxResults) {
+
+        if (cartCategories.size() <= 1 || recs == null || recs.isEmpty()) {
+            return recs == null ? Collections.emptyList()
+                    : recs.subList(0, Math.min(maxResults, recs.size()));
+        }
+
+        // Group by category
+        Map<String, List<ProductRecommendationDTO>> byCategory = new java.util.LinkedHashMap<>();
+        List<ProductRecommendationDTO> other = new ArrayList<>();
+
+        for (ProductRecommendationDTO rec : recs) {
+            String cat = rec.getCategory() != null ? rec.getCategory() : "";
+            boolean inCartCat = cartCategories.stream()
+                    .anyMatch(c -> c.equalsIgnoreCase(cat) || cat.toLowerCase().contains(c.toLowerCase()));
+            if (inCartCat) {
+                byCategory.computeIfAbsent(cat, k -> new ArrayList<>()).add(rec);
+            } else {
+                other.add(rec);
+            }
+        }
+
+        // Round-robin interleave across cart categories
+        List<ProductRecommendationDTO> result = new ArrayList<>();
+        List<List<ProductRecommendationDTO>> queues = new ArrayList<>(byCategory.values());
+        int i = 0;
+        while (result.size() < maxResults) {
+            boolean added = false;
+            for (List<ProductRecommendationDTO> queue : queues) {
+                if (!queue.isEmpty() && result.size() < maxResults) {
+                    result.add(queue.remove(0));
+                    added = true;
+                }
+            }
+            if (!added) break;
+        }
+
+        // Fill remaining slots with "other" category items
+        for (ProductRecommendationDTO rec : other) {
+            if (result.size() >= maxResults) break;
+            result.add(rec);
+        }
+
         return result;
     }
 

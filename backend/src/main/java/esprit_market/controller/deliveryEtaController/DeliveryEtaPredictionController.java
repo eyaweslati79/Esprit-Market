@@ -23,6 +23,25 @@ public class DeliveryEtaPredictionController {
         return ResponseEntity.ok(etaPredictionService.predictForDelivery(deliveryId));
     }
 
+    /**
+     * Predict ETA using explicit map coordinates from the Leaflet map.
+     * Provides more accurate distance/duration than zone-centroid geocoding.
+     *
+     * Body: { originLat, originLng, destLat, destLng }  (all optional — falls back to zone lookup)
+     */
+    @PostMapping("/{deliveryId}/predict-with-coords")
+    @PreAuthorize("hasAnyRole('ADMIN','DELIVERY')")
+    public ResponseEntity<DeliveryEtaPredictionDTO> predictWithCoords(
+            @PathVariable String deliveryId,
+            @RequestBody(required = false) java.util.Map<String, Double> coords) {
+        Double originLat = coords != null ? coords.get("originLat") : null;
+        Double originLng = coords != null ? coords.get("originLng") : null;
+        Double destLat   = coords != null ? coords.get("destLat")   : null;
+        Double destLng   = coords != null ? coords.get("destLng")   : null;
+        return ResponseEntity.ok(
+                etaPredictionService.predictForDelivery(deliveryId, originLat, originLng, destLat, destLng));
+    }
+
     @GetMapping("/{deliveryId}/latest")
     @PreAuthorize("hasAnyRole('ADMIN','DELIVERY')")
     public ResponseEntity<DeliveryEtaPredictionDTO> latest(@PathVariable String deliveryId) {

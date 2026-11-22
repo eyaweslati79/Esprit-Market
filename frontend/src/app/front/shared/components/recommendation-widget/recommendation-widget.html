@@ -179,82 +179,25 @@
       </div>
 
     } @else {
-      <!-- ════════════════════════════════════════════════════════════════════
-           PRODUCT DETAIL PAGE — Shein-style horizontal scroll strip
-      ════════════════════════════════════════════════════════════════════ -->
-      <div class="flex gap-3 overflow-x-auto pb-3 scroll-smooth"
-           style="scrollbar-width:none;-ms-overflow-style:none">
+      <!-- HOME PAGE — same product cards as every other section -->
+      <div class="rec-row-wrap">
+        <button class="rec-arrow rec-arrow-prev" (click)="scrollRec(-1)" aria-label="Previous">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/>
+          </svg>
+        </button>
 
-        @for (rec of enrichedProducts(); track rec.product_id) {
-          <div class="group relative bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 flex flex-col shrink-0"
-               style="width:176px">
+        <div class="rec-row" id="row-rec">
+          @for (product of productCards(); track product.id) {
+            <app-product-card [product]="product"></app-product-card>
+          }
+        </div>
 
-            <!-- Match badge -->
-            <div class="absolute top-2 right-2 z-10">
-              <span class="px-1.5 py-0.5 bg-primary text-white text-[9px] font-black rounded-full shadow">
-                {{ getScorePercent(rec.score) }}% match
-              </span>
-            </div>
-
-            <!-- Image — portrait ratio, clickable -->
-            <a [routerLink]="['/product', rec.product_id]" (click)="trackView(rec.product_id)"
-               class="block overflow-hidden bg-gray-50" style="aspect-ratio:3/4">
-              @if (rec.imageUrl) {
-                <img [src]="rec.imageUrl" [alt]="rec.name"
-                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
-              } @else {
-                <div class="w-full h-full flex items-center justify-center text-gray-200">
-                  <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1"
-                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-              }
-            </a>
-
-            <!-- Info + buttons -->
-            <div class="p-2.5 flex flex-col flex-1">
-              @if (rec.category) {
-                <span class="text-[9px] font-black uppercase tracking-widest text-primary mb-0.5 truncate">{{ rec.category }}</span>
-              }
-              <a [routerLink]="['/product', rec.product_id]"
-                 class="font-semibold text-gray-900 text-[11px] leading-snug line-clamp-2 hover:text-primary transition-colors mb-1.5">
-                {{ rec.name }}
-              </a>
-              <span class="text-sm font-black text-primary mb-2.5">{{ rec.price | number:'1.2-2' }} TND</span>
-
-              <!-- Action buttons -->
-              @if (rec.stock > 0) {
-                <div class="mt-auto flex gap-1.5">
-                  <button (click)="addToCart(rec, $event)"
-                          [disabled]="isAddingToCart(rec.product_id)"
-                          class="flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all disabled:opacity-50 flex items-center justify-center gap-0.5">
-                    @if (isAddingToCart(rec.product_id)) {
-                      <svg class="w-2.5 h-2.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                      </svg>
-                    } @else {
-                      🛒
-                    }
-                    Cart
-                  </button>
-                  <button (click)="buyNow(rec, $event)"
-                          class="flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider bg-dark text-white hover:bg-black transition-all flex items-center justify-center gap-0.5">
-                    ⚡ Buy
-                  </button>
-                </div>
-              } @else {
-                <div class="mt-auto">
-                  <span class="block w-full py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider text-center bg-gray-100 text-gray-400">
-                    Out of Stock
-                  </span>
-                </div>
-              }
-            </div>
-          </div>
-        }
-
+        <button class="rec-arrow rec-arrow-next" (click)="scrollRec(1)" aria-label="Next">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
+          </svg>
+        </button>
       </div>
     }
   }

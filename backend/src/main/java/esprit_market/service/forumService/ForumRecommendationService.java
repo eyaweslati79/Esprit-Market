@@ -45,6 +45,33 @@ public class ForumRecommendationService {
     }
 
     /**
+     * Ingest a newly created post into the AI FAISS index in real-time.
+     * Fire-and-forget — never blocks the create response.
+     */
+    public void ingestPost(Post post) {
+        if (post == null || !config.isEnabled()) return;
+        try {
+            String[] tb = splitTitle(post.getContent());
+            var body = java.util.Map.of(
+                "post_id",    toId(post.getId()),
+                "title",      tb[0] != null ? tb[0] : "",
+                "content",    post.getContent() != null ? post.getContent() : "",
+                "category_id", post.getCategoryId() != null ? toId(post.getCategoryId()) : ""
+            );
+            webClient.post()
+                .uri("/ingest")
+                .bodyValue(body)
+                .retrieve()
+                .bodyToMono(String.class)
+                .timeout(Duration.ofSeconds(3))
+                .onErrorReturn("error")
+                .subscribe(result -> log.debug("Forum AI ingest: post={} result={}", toId(post.getId()), result));
+        } catch (Exception e) {
+            log.debug("Forum AI ingest skipped: {}", e.getMessage());
+        }
+    }
+
+    /**
      * Semantic search: finds posts semantically similar to a free-text query.
      * Uses the AI service (all-MiniLM-L6-v2 + FAISS) when available,
      * falls back to keyword-based matching from MongoDB.

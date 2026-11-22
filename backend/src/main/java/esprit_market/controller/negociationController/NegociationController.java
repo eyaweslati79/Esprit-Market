@@ -147,6 +147,13 @@ public class NegociationController {
         return ResponseEntity.ok(negociationService.predictNegotiation(request, resolveUserId(authentication)));
     }
 
+    @PostMapping("/backfill-ai")
+    @Operation(summary = "Backfill AI probability for all existing negotiations (admin/startup)")
+    public ResponseEntity<java.util.Map<String, Object>> backfillAi() {
+        int updated = negociationService.backfillAiProbabilities();
+        return ResponseEntity.ok(java.util.Map.of("updated", updated, "status", "done"));
+    }
+
     @GetMapping("/{id}/pdf")
     @Operation(summary = "Download negotiation contract as PDF")
     public ResponseEntity<byte[]> downloadPdf(@PathVariable String id) {

@@ -1,50 +1,69 @@
 <div class="bg-gray-50 min-h-screen py-12 relative overflow-hidden">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         
-        <!-- Progress Bar -->
+        <!-- Progress Stepper -->
         @if (currentStep() !== 'COMPLETE') {
-        <div class="max-w-3xl mx-auto mb-10 hidden sm:block">
-            <div class="flex items-center justify-between relative">
-                <!-- Line background -->
-                <div class="absolute left-0 top-1/2 transform -translate-y-1/2 w-full h-1 bg-gray-200 z-0 rounded-full"></div>
-                <!-- Line progress -->
-                <div class="absolute left-0 top-1/2 transform -translate-y-1/2 h-1 bg-primary z-0 transition-all duration-500 rounded-full"
-                     [style.width]="currentStep() === 'CART' ? '0%' : (currentStep() === 'PLACE_ORDER' ? '50%' : '100%')"></div>
-                
-                <!-- Step 1 -->
-                <div class="relative z-10 flex flex-col items-center cursor-pointer group" (click)="goToStep('CART')">
-                    <div class="w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg transition-all duration-300 transform group-hover:scale-105"
-                         [ngClass]="currentStep() === 'CART' || currentStep() === 'PLACE_ORDER' || currentStep() === 'PAY' ? 'bg-primary text-white shadow-xl shadow-primary/30 ring-4 ring-primary/20' : 'bg-gray-200 text-gray-500'">
-                        @if (currentStep() !== 'CART') { <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg> } @else { 1 }
-                    </div>
-                    <span class="mt-3 text-xs font-bold uppercase tracking-widest transition-colors duration-300"
-                          [ngClass]="currentStep() === 'CART' || currentStep() === 'PLACE_ORDER' || currentStep() === 'PAY' ? 'text-primary' : 'text-gray-400'">Cart</span>
-                </div>
-                
-                <!-- Step 2 -->
-                <div class="relative z-10 flex flex-col items-center transition-all duration-300"
-                     [class.cursor-pointer]="currentStep() === 'PAY'"
-                     [class.opacity-50]="currentStep() === 'CART'"
-                     (click)="currentStep() === 'PAY' ? goToStep('PLACE_ORDER') : null">
-                    <div class="w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg transition-all duration-300"
-                         [ngClass]="currentStep() === 'PLACE_ORDER' || currentStep() === 'PAY' ? 'bg-primary text-white shadow-xl shadow-primary/30 ring-4 ring-primary/20' : 'bg-white border-2 border-gray-300 text-gray-400'">
-                        @if (currentStep() === 'PAY') { <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg> } @else { 2 }
-                    </div>
-                    <span class="mt-3 text-xs font-bold uppercase tracking-widest transition-colors duration-300"
-                          [ngClass]="currentStep() === 'PLACE_ORDER' || currentStep() === 'PAY' ? 'text-primary' : 'text-gray-400'">Place Order</span>
-                </div>
+        <div class="cart-stepper max-w-2xl mx-auto mb-10 hidden sm:block">
 
-                <!-- Step 3 -->
-                <div class="relative z-10 flex flex-col items-center transition-all duration-300"
-                     [class.opacity-50]="currentStep() === 'CART' || currentStep() === 'PLACE_ORDER'">
-                    <div class="w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg transition-all duration-300"
-                         [ngClass]="currentStep() === 'PAY' ? 'bg-primary text-white shadow-xl shadow-primary/30 ring-4 ring-primary/20' : 'bg-white border-2 border-gray-300 text-gray-400'">
-                        3
-                    </div>
-                    <span class="mt-3 text-xs font-bold uppercase tracking-widest transition-colors duration-300"
-                          [ngClass]="currentStep() === 'PAY' ? 'text-primary' : 'text-gray-400'">Pay</span>
-                </div>
+          <!-- Track -->
+          <div class="cst-track">
+            <div class="cst-track-bg"></div>
+            <div class="cst-track-fill"
+                 [style.width]="currentStep() === 'CART' ? '0%' : currentStep() === 'PLACE_ORDER' ? '50%' : '100%'">
             </div>
+          </div>
+
+          <!-- Steps -->
+          <div class="cst-steps">
+
+            <!-- Step 1 — Cart -->
+            <div class="cst-step cst-done" (click)="goToStep('CART')" data-tip="Back to Cart">
+              <div class="cst-bubble">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                  @if (currentStep() !== 'CART') {
+                    <polyline points="20 6 9 17 4 12"/>
+                  } @else {
+                    <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>
+                  }
+                </svg>
+                <span class="cst-num">1</span>
+              </div>
+              <span class="cst-label">Cart</span>
+            </div>
+
+            <!-- Step 2 — Place Order -->
+            <div class="cst-step"
+                 [class.cst-done]="currentStep() === 'PLACE_ORDER' || currentStep() === 'PAY'"
+                 [class.cst-active]="currentStep() === 'PLACE_ORDER'"
+                 [class.cst-future]="currentStep() === 'CART'"
+                 (click)="currentStep() === 'PAY' ? goToStep('PLACE_ORDER') : null">
+              <div class="cst-bubble">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                  @if (currentStep() === 'PAY') {
+                    <polyline points="20 6 9 17 4 12"/>
+                  } @else {
+                    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/>
+                  }
+                </svg>
+                <span class="cst-num">2</span>
+              </div>
+              <span class="cst-label">Place Order</span>
+            </div>
+
+            <!-- Step 3 — Pay -->
+            <div class="cst-step"
+                 [class.cst-active]="currentStep() === 'PAY'"
+                 [class.cst-future]="currentStep() === 'CART' || currentStep() === 'PLACE_ORDER'">
+              <div class="cst-bubble">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                  <rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+                </svg>
+                <span class="cst-num">3</span>
+              </div>
+              <span class="cst-label">Pay</span>
+            </div>
+
+          </div>
         </div>
         }
 
@@ -188,7 +207,9 @@
                             [userId]="currentUserId()"
                             [limit]="4"
                             title="You Might Also Like"
-                            [showInfoCard]="false">
+                            [showInfoCard]="false"
+                            context="cart"
+                            [cartProductIds]="cartItems().map(i => i.product.id)">
                         </app-recommendation-widget>
                     </div>
                 }
@@ -500,6 +521,17 @@
                             }
                         </div>
                     </div>
+
+                    <!-- Loyalty coupon auto-apply banner -->
+                    @if (appliedCoupon() && appliedCoupon()!.code.startsWith('LOYALTY-')) {
+                      <div class="mb-4 flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20">
+                        <span class="text-xl">🎁</span>
+                        <div class="flex-1">
+                          <p class="text-sm font-black text-primary">Loyalty discount applied!</p>
+                          <p class="text-xs text-gray-500">Your points earned at this shop are saving you money.</p>
+                        </div>
+                      </div>
+                    }
 
                     <div class="mb-6">
                         @if (!appliedCoupon()) {

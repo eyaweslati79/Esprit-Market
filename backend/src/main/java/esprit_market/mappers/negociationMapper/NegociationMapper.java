@@ -37,6 +37,8 @@ public class NegociationMapper {
                 .proposals(toProposalResponseList(negociation.getProposals()))
                 .createdAt(negociation.getCreatedAt())
                 .updatedAt(negociation.getUpdatedAt())
+                .aiAcceptanceProbability(negociation.getAiAcceptanceProbability())
+                .aiExplanation(negociation.getAiExplanation())
                 .build();
     }
 

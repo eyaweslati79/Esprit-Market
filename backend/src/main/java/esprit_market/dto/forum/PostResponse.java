@@ -26,4 +26,5 @@ public class PostResponse {
     private List<String> reactionIds;
     @Builder.Default
     private List<RecommendedForumPost> recommendedPosts = new ArrayList<>();
+    private String imageUrl;
 }

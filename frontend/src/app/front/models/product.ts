@@ -45,6 +45,16 @@ export interface Product {
      * Values: NEW_SELLER, GROWING_SELLER, TRUSTED_SELLER, TOP_SELLER
      */
     trustBadge?: string;
+
+    // ── Flash Sale ────────────────────────────────────────────────────────────
+    flashSaleActive?: boolean;
+    flashSalePrice?: number;
+    flashSaleStartTime?: Date;
+    flashSaleEndTime?: Date;
+    flashSaleMaxQuantity?: number;
+    flashSaleSoldQuantity?: number;
+    /** Computed by backend: true if sale is currently live */
+    flashSaleLive?: boolean;
 }
 
 export enum ProductStatus {

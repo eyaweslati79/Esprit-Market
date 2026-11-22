@@ -11,7 +11,8 @@ import { Delivery } from '../../../back/core/models/sav.models';
   standalone: true,
   imports: [CommonModule, FormsModule],
   providers: [DatePipe],
-  templateUrl: './driver-deliveries.component.html'
+  templateUrl: './driver-deliveries.component.html',
+  styleUrls: ['./driver-deliveries.component.scss']
 })
 export class DriverDeliveriesComponent implements OnInit, OnDestroy {
   private savService = inject(SavService);
@@ -20,6 +21,7 @@ export class DriverDeliveriesComponent implements OnInit, OnDestroy {
 
   readonly myUserId = signal<string>('');
   readonly isLoading = signal<boolean>(true);
+  readonly activeTab = signal<'pending' | 'active' | 'history'>('pending');
   
   // Data lists
   readonly pendingDeliveries = signal<Delivery[]>([]);
@@ -29,6 +31,8 @@ export class DriverDeliveriesComponent implements OnInit, OnDestroy {
   // Computed counters
   readonly notifCount = computed(() => this.pendingDeliveries().length);
   readonly activeCount = computed(() => this.activeDeliveries().length);
+  readonly deliveredCount = computed(() => this.historyDeliveries().filter(d => d.status === 'DELIVERED').length);
+  readonly returnedCount = computed(() => this.historyDeliveries().filter(d => d.status === 'RETURNED').length);
 
   // Modals state
   readonly isDeclineModalOpen = signal<boolean>(false);

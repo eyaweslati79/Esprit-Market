@@ -17,6 +17,7 @@ import esprit_market.config.TwilioProperties;
 @SpringBootApplication
 @EnableScheduling
 @EnableAsync
+@org.springframework.data.mongodb.config.EnableMongoAuditing
 @EnableConfigurationProperties(TwilioProperties.class)
 public class    EspritMarketApplication {
 

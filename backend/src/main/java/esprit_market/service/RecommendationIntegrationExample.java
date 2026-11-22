@@ -4,12 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-/**
- * Example integration class showing how to integrate ML recommendations
- * with existing marketplace services
- * 
- * This is a reference implementation - integrate these patterns into your existing services
- */
+
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -17,10 +12,7 @@ public class RecommendationIntegrationExample {
 
     private final RecommendationIntegrationService recommendationIntegration;
 
-    /**
-     * Example: How to integrate with FavorisService
-     * Add this to your existing FavorisService.addFavoris() method
-     */
+
     public void exampleFavorisIntegration(String userId, String productId) {
         // Your existing favoris logic here...
         
@@ -83,31 +75,3 @@ public class RecommendationIntegrationExample {
     }
 }
 
-/*
-INTEGRATION INSTRUCTIONS:
-
-1. For FavorisService.java:
-   Add this line in your addFavoris() method:
-   recommendationIntegrationService.trackProductLike(userId, productId);
-
-2. For ProductService.java:
-   Add this line in your getProductById() method:
-   recommendationIntegrationService.trackProductView(userId, productId);
-
-3. For CartService.java:
-   Add this line in your addToCart() method:
-   recommendationIntegrationService.trackAddToCart(userId, productId);
-   
-   Add this line in your removeFromCart() method:
-   recommendationIntegrationService.trackRemoveFromCart(userId, productId);
-
-4. For OrderService.java:
-   Add this line in your completeOrder() method:
-   recommendationIntegrationService.trackMultiplePurchases(userId, productIds);
-
-5. Don't forget to inject RecommendationIntegrationService in your existing services:
-   private final RecommendationIntegrationService recommendationIntegrationService;
-
-The tracking is async and won't affect your existing performance.
-If the ML service is down, it will fail silently without affecting your main operations.
-*/

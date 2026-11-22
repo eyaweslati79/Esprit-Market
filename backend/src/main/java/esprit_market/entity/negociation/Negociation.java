@@ -40,4 +40,8 @@ public class Negociation {
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    // AI prediction — updated every time a new proposal is added
+    private Double aiAcceptanceProbability;
+    private List<String> aiExplanation;
 }

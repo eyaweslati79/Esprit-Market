@@ -1,0 +1,21 @@
+product_id,name,category,price,stock,shopId
+1,Laptop Lenovo i5,electronics,950,8,1001
+2,Laptop Dell i7,electronics,1200,5,1001
+3,MacBook Air M2,electronics,1500,4,1002
+4,HP Pavilion,electronics,850,10,1001
+5,Smartphone Samsung A54,electronics,650,12,1002
+6,iPhone 14 Pro,electronics,1200,6,1002
+7,Wireless Mouse Logitech,electronics,25,40,1001
+8,Mechanical Keyboard RGB,electronics,70,25,1001
+9,USB Flash 128GB,electronics,20,80,1001
+10,Power Bank 20000mAh,electronics,35,60,1002
+11,Headphones JBL,electronics,45,35,1002
+12,Study Lamp LED,accessories,18,50,1003
+13,Laptop Stand,accessories,22,45,1003
+14,Backpack Student Pro,accessories,55,25,1003
+15,Notebook A4 Pack,stationery,8,100,1003
+16,Scientific Calculator,stationery,35,30,1003
+17,Pen Pack 10,stationery,5,200,1003
+18,Marker Set,stationery,6,150,1003
+19,SSD 1TB,electronics,120,15,1001
+20,External HDD 2TB,electronics,90,20,1001

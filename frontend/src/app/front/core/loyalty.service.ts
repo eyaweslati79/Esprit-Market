@@ -38,6 +38,7 @@ export interface UserReward {
   rewardId: string;
   rewardName: string;
   rewardValue: number;
+  rewardType?: 'PERCENTAGE_DISCOUNT' | 'FIXED_AMOUNT';
   maxDiscountAmount: number | null;
   minOrderAmount: number | null;
   pointsSpent: number;
@@ -61,6 +62,12 @@ export interface ShopSummary {
   shopName: string;
   orderCount: number;
   totalSpent: number;
+  // Per-shop discount fields (added by backend)
+  pointsFromShop?: number;
+  discountPercentage?: number;
+  maxDiscountTnd?: number;
+  exampleOrderOriginal?: number;
+  exampleOrderAfterDiscount?: number;
 }
 
 export interface DynamicBoost {

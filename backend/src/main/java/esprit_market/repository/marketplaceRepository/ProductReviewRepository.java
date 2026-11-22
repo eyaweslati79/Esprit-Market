@@ -35,6 +35,11 @@ public interface ProductReviewRepository extends MongoRepository<ProductReview, 
      * Check if customer already reviewed this order item
      */
     boolean existsByCustomerIdAndOrderItemId(ObjectId customerId, ObjectId orderItemId);
+
+    /**
+     * Check if customer already reviewed this product (any order item)
+     */
+    boolean existsByCustomerIdAndProductId(ObjectId customerId, ObjectId productId);
     
     /**
      * Count approved reviews for a seller

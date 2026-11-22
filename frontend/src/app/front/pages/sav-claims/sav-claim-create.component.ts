@@ -1,11 +1,26 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { SavClaimService, SavClaim } from '../../core/sav-claim.service';
-import { CartService } from '../../core/cart.service';
+import { OrderService } from '../../core/order.service';
 import { UserService } from '../../core/user.service';
 import { User, UserRole } from '../../models/user.model';
+import { OrderResponse, OrderItemResponse } from '../../models/order.model';
+
+/** Flat item shown in the order-item picker */
+export interface OrderItemDisplay {
+  /** The order item ID — sent as cartItemId in the claim */
+  id: string;
+  productName: string;
+  quantity: number;
+  subtotal: number;
+  orderNumber: string;
+  orderDate: string;
+  orderStatus: string;
+}
+
+const PAGE_SIZE = 4;
 
 @Component({
   selector: 'app-sav-claim-create',
@@ -15,68 +30,108 @@ import { User, UserRole } from '../../models/user.model';
   styleUrls: ['./sav-claim-create.component.css']
 })
 export class SavClaimCreateComponent implements OnInit {
-  private fb = inject(FormBuilder);
-  private savService = inject(SavClaimService);
-  private cartService = inject(CartService);
+  private fb          = inject(FormBuilder);
+  private savService  = inject(SavClaimService);
+  private orderService = inject(OrderService);
   private userService = inject(UserService);
-  private router = inject(Router);
-  private route = inject(ActivatedRoute);
+  private router      = inject(Router);
+  private route       = inject(ActivatedRoute);
 
   form = this.fb.group({
-    targetType: ['PRODUCT', Validators.required],
-    cartItemId: ['', Validators.required],
+    targetType:      ['PRODUCT', Validators.required],
+    cartItemId:      ['', Validators.required],
     deliveryAgentId: [''],
-    reason: ['', Validators.required],
-    problemNature: ['', Validators.required],
+    reason:          ['', Validators.required],
+    problemNature:   ['', Validators.required],
     desiredSolution: ['', Validators.required],
-    priority: ['MEDIUM'],
-    message: ['', Validators.required],
-    rating: [0]
+    priority:        ['MEDIUM'],
+    message:         ['', Validators.required],
+    rating:          [0]
   });
 
-  purchasedItems = signal<any[]>([]);
-  deliveryAgents = signal<User[]>([]);
-  selectedImages = signal<any[]>([]);
-  isSubmitting = signal(false);
-  isLoadingItems = signal(false);
+  // ── Order items ────────────────────────────────────────────────────────────
+  /** All flattened order items from the user's orders */
+  allOrderItems   = signal<OrderItemDisplay[]>([]);
+  isLoadingItems  = signal(false);
+  itemsError      = signal('');
+
+  /** Current page index (0-based) */
+  itemPage        = signal(0);
+
+  /** Items visible on the current page */
+  readonly visibleItems = computed(() => {
+    const start = this.itemPage() * PAGE_SIZE;
+    return this.allOrderItems().slice(start, start + PAGE_SIZE);
+  });
+
+  readonly totalPages = computed(() =>
+    Math.ceil(this.allOrderItems().length / PAGE_SIZE)
+  );
+
+  readonly canPrev = computed(() => this.itemPage() > 0);
+  readonly canNext = computed(() => this.itemPage() < this.totalPages() - 1);
+
+  // ── Other state ────────────────────────────────────────────────────────────
+  deliveryAgents      = signal<User[]>([]);
+  selectedImages      = signal<any[]>([]);
+  isSubmitting        = signal(false);
   isDeliveryAgentMode = signal(false);
+
+  // ── Lifecycle ──────────────────────────────────────────────────────────────
 
   ngOnInit(): void {
     const deliveryMode = this.route.snapshot.queryParamMap.get('target') === 'delivery';
     this.isDeliveryAgentMode.set(deliveryMode);
+
     if (deliveryMode) {
-      this.form.patchValue({
-        targetType: 'DELIVERY_AGENT',
-        desiredSolution: 'investigate_agent'
-      });
+      this.form.patchValue({ targetType: 'DELIVERY_AGENT', desiredSolution: 'investigate_agent' });
+    } else {
+      this.loadOrderItems();
     }
 
-    if (!deliveryMode) {
-      this.loadPurchasedItems();
-    }
     this.loadDeliveryAgents();
     this.syncTargetValidators();
-    
-    // Check if cartItemId is in query params
-    const cartItemId = this.route.snapshot.queryParamMap.get('cartItemId');
-    if (cartItemId) {
-      this.form.patchValue({ cartItemId });
-    }
 
+    const cartItemId = this.route.snapshot.queryParamMap.get('cartItemId');
+    if (cartItemId) this.form.patchValue({ cartItemId });
   }
 
-  loadPurchasedItems(): void {
+  // ── Data loading ───────────────────────────────────────────────────────────
+
+  loadOrderItems(): void {
     this.isLoadingItems.set(true);
-    
-    // Load purchased items from cart service (from database)
-    this.cartService.getPurchasedItems().subscribe({
-      next: (items: any[]) => {
-        this.purchasedItems.set(items);
+    this.itemsError.set('');
+
+    this.orderService.getMyOrders().subscribe({
+      next: (orders: OrderResponse[]) => {
+        // Flatten all order items into a single selectable list
+        const items: OrderItemDisplay[] = [];
+        for (const order of orders) {
+          if (!order.items?.length) continue;
+          for (const item of order.items) {
+            if (item.status === 'CANCELLED') continue;   // skip cancelled items
+            items.push({
+              id:          item.id,
+              productName: item.productName,
+              quantity:    item.quantity,
+              subtotal:    item.subtotal,
+              orderNumber: order.orderNumber,
+              orderDate:   order.createdAt,
+              orderStatus: order.status,
+            });
+          }
+        }
+        this.allOrderItems.set(items);
+        this.itemPage.set(0);
         this.isLoadingItems.set(false);
+
+        if (items.length === 0) {
+          this.itemsError.set('No order items found. Place an order first.');
+        }
       },
       error: (err: any) => {
-        console.error('Error loading purchased items:', err);
-        this.purchasedItems.set([]);
+        console.error('Error loading orders:', err);
+        this.itemsError.set('Could not load your orders. Please try again.');
         this.isLoadingItems.set(false);
       }
     });
@@ -86,53 +141,65 @@ export class SavClaimCreateComponent implements OnInit {
     this.userService.getAllUsers({ role: UserRole.DELIVERY, limit: 500 }).subscribe({
       next: (res: any) => {
         const users = res.content || res.users || (Array.isArray(res) ? res : []);
-        this.deliveryAgents.set(users.filter((user: any) => {
-          if (Array.isArray(user.roles)) return user.roles.includes(UserRole.DELIVERY);
-          return user.role === UserRole.DELIVERY;
-        }));
+        this.deliveryAgents.set(users.filter((u: any) =>
+          Array.isArray(u.roles) ? u.roles.includes(UserRole.DELIVERY) : u.role === UserRole.DELIVERY
+        ));
       },
       error: () => this.deliveryAgents.set([])
     });
   }
 
+  // ── Pagination ─────────────────────────────────────────────────────────────
+
+  prevPage(): void { if (this.canPrev()) this.itemPage.update(p => p - 1); }
+  nextPage(): void { if (this.canNext()) this.itemPage.update(p => p + 1); }
+
+  selectItem(item: OrderItemDisplay): void {
+    this.form.patchValue({ cartItemId: item.id });
+  }
+
+  isSelected(item: OrderItemDisplay): boolean {
+    return this.form.value.cartItemId === item.id;
+  }
+
+  selectedItemLabel(): string {
+    const id = this.form.value.cartItemId;
+    if (!id) return '';
+    const found = this.allOrderItems().find(i => i.id === id);
+    return found ? `${found.productName} (${found.orderNumber})` : id;
+  }
+
+  // ── Form helpers ───────────────────────────────────────────────────────────
+
   private syncTargetValidators(): void {
     const apply = () => {
-      const cartItemControl = this.form.get('cartItemId');
-      const agentControl = this.form.get('deliveryAgentId');
+      const cartCtrl  = this.form.get('cartItemId');
+      const agentCtrl = this.form.get('deliveryAgentId');
       if (this.form.value.targetType === 'DELIVERY_AGENT') {
-        agentControl?.setValidators([Validators.required]);
-        cartItemControl?.clearValidators();
-        cartItemControl?.setValue('');
+        agentCtrl?.setValidators([Validators.required]);
+        cartCtrl?.clearValidators();
+        cartCtrl?.setValue('');
       } else {
-        cartItemControl?.setValidators([Validators.required]);
-        agentControl?.clearValidators();
-        agentControl?.setValue('');
+        cartCtrl?.setValidators([Validators.required]);
+        agentCtrl?.clearValidators();
+        agentCtrl?.setValue('');
       }
-      cartItemControl?.updateValueAndValidity();
-      agentControl?.updateValueAndValidity();
+      cartCtrl?.updateValueAndValidity();
+      agentCtrl?.updateValueAndValidity();
     };
-
     apply();
     this.form.get('targetType')?.valueChanges.subscribe(apply);
   }
 
   onFilesSelected(event: any): void {
     const files = event.target.files;
-    if (files) {
-      const newImages = Array.from(files).map((file: any) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          // Update preview
-        };
-        reader.readAsDataURL(file);
-        return {
-          file,
-          name: file.name,
-          preview: URL.createObjectURL(file)
-        };
-      });
-      this.selectedImages.set([...this.selectedImages(), ...newImages]);
-    }
+    if (!files) return;
+    const newImages = Array.from(files).map((file: any) => ({
+      file,
+      name:    file.name,
+      preview: URL.createObjectURL(file)
+    }));
+    this.selectedImages.set([...this.selectedImages(), ...newImages]);
   }
 
   removeImage(name: string): void {
@@ -143,26 +210,19 @@ export class SavClaimCreateComponent implements OnInit {
     this.form.patchValue({ rating });
   }
 
+  // ── Submit ─────────────────────────────────────────────────────────────────
+
   submit(): void {
     if (this.form.invalid) {
-      alert('Please fill all required fields');
+      this.form.markAllAsTouched();
       return;
     }
-
     this.isSubmitting.set(true);
-
     const files: File[] = this.selectedImages().map(img => img.file);
 
-    // Step 1: upload images to Cloudinary (no-op if none selected)
     this.savService.uploadImages(files).subscribe({
       next: (imageUrls) => {
-        // Step 2: submit claim with real Cloudinary URLs
-        const claim: SavClaim = {
-          type: 'SAV',
-          ...(this.form.value as any),
-          imageUrls
-        };
-
+        const claim: SavClaim = { type: 'SAV', ...(this.form.value as any), imageUrls };
         this.savService.createSavClaim(claim).subscribe({
           next: () => {
             alert(this.form.value.targetType === 'DELIVERY_AGENT'

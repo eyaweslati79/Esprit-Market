@@ -50,6 +50,7 @@ export class Products implements OnInit {
   // ✅ Added shop filtering
   selectedShopId = signal<string | null>(null);
   selectedShopName = signal<string | null>(null);
+  loyaltyDiscountTnd = signal<number | null>(null); // discount from loyalty page
 
   // Pagination
   currentPage = signal<number>(1);
@@ -186,7 +187,8 @@ export class Products implements OnInit {
     this.route.queryParams.subscribe(params => {
       if (params['q']) this.searchQuery.set(params['q']);
       if (params['category']) this.selectedCategory.set(params['category']);
-      if (params['shop']) this.filterByShop(params['shop'], params['shopName']);
+      if (params['shop'] || params['shopId']) this.filterByShop(params['shop'] || params['shopId'], params['shopName']);
+      if (params['loyaltyDiscount']) this.loyaltyDiscountTnd.set(parseFloat(params['loyaltyDiscount']));
     });
   }
 

@@ -7,6 +7,7 @@ import esprit_market.dto.forum.RecommendedForumPost;
 import esprit_market.entity.forum.Post;
 import esprit_market.entity.forum.Reaction;
 import esprit_market.mappers.ForumMapper;
+import esprit_market.service.CloudinaryService;
 import esprit_market.service.forumService.ForumRecommendationService;
 import esprit_market.service.forumService.PostService;
 import esprit_market.service.forumService.ReactionService;
@@ -14,8 +15,10 @@ import esprit_market.repository.userRepository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.security.core.context.SecurityContextHolder;
 import jakarta.validation.Valid;
 
@@ -30,6 +33,7 @@ public class PostController {
     private final ReactionService reactionService;
     private final ForumRecommendationService recommendationService;
     private final UserRepository userRepository;
+    private final CloudinaryService cloudinaryService;
 
     private boolean isAdmin() {
         return SecurityContextHolder.getContext().getAuthentication().getAuthorities()
@@ -58,6 +62,35 @@ public class PostController {
 
     @PostMapping
     public ResponseEntity<PostResponse> create(@Valid @RequestBody PostRequest dto) {
+        Post entity = service.create(dto);
+        if (entity == null) return ResponseEntity.badRequest().build();
+        PostResponse response = ForumMapper.toPostResponse(entity);
+        response.setRecommendedPosts(recommendationService.getRecommendations(entity));
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /** Create a post with an optional image upload (multipart/form-data). */
+    @PostMapping(value = "/with-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<PostResponse> createWithImage(
+            @RequestParam("userId")     String userId,
+            @RequestParam("categoryId") String categoryId,
+            @RequestParam("content")    String content,
+            @RequestParam(value = "pinned",   required = false, defaultValue = "false") Boolean pinned,
+            @RequestParam(value = "approved", required = false, defaultValue = "true")  Boolean approved,
+            @RequestPart(value = "image", required = false) MultipartFile image) {
+
+        PostRequest dto = new PostRequest();
+        dto.setUserId(userId);
+        dto.setCategoryId(categoryId);
+        dto.setContent(content);
+        dto.setPinned(pinned);
+        dto.setApproved(approved);
+
+        if (image != null && !image.isEmpty()) {
+            String imageUrl = cloudinaryService.upload(image, "forum");
+            dto.setImageUrl(imageUrl);
+        }
+
         Post entity = service.create(dto);
         if (entity == null) return ResponseEntity.badRequest().build();
         PostResponse response = ForumMapper.toPostResponse(entity);

@@ -92,14 +92,33 @@ public class DeliveryEtaPredictionService {
     }
 
     public DeliveryEtaPredictionDTO predictForDelivery(String deliveryId) {
+        return predictForDelivery(deliveryId, null, null, null, null);
+    }
+
+    /**
+     * Predict ETA using explicit map coordinates (from the Leaflet map on the admin page).
+     * When coordinates are provided they are used directly, bypassing zone-lookup geocoding.
+     * OSRM then gets the exact lat/lng instead of a zone centroid approximation.
+     */
+    public DeliveryEtaPredictionDTO predictForDelivery(
+            String deliveryId,
+            Double originLat, Double originLng,
+            Double destLat,   Double destLng) {
+
         Delivery delivery = deliveryRepository.findById(new ObjectId(deliveryId))
                 .orElseThrow(() -> new RuntimeException("Delivery not found: " + deliveryId));
         Optional<Order> order = resolveOrder(delivery);
         Optional<User> driver = delivery.getUserId() != null ? userRepository.findById(delivery.getUserId()) : Optional.empty();
 
-        Coordinates destination = coordinatesForDelivery(delivery);
-        Coordinates origin = driver.map(this::coordinatesForDriver)
-                .orElseGet(() -> nearbyOrigin(destination));
+        // Use provided coordinates when available, otherwise fall back to zone lookup
+        Coordinates destination = (destLat != null && destLng != null && isTunisiaCoordinate(destLat, destLng))
+                ? new Coordinates(destLat, destLng)
+                : coordinatesForDelivery(delivery);
+
+        Coordinates origin = (originLat != null && originLng != null && isTunisiaCoordinate(originLat, originLng))
+                ? new Coordinates(originLat, originLng)
+                : driver.map(this::coordinatesForDriver).orElseGet(() -> nearbyOrigin(destination));
+
         RouteInfo route = resolveRoute(origin, destination);
         WeatherInfo weather = resolveWeather(destination);
 
@@ -220,7 +239,9 @@ public class DeliveryEtaPredictionService {
             }
         }
         double distanceKm = haversineKm(origin, destination);
-        return new RouteInfo(distanceKm, Math.max(5.0, distanceKm * 4.5 + 8.0));
+        // Realistic fallback: 35 km/h average + 5 min overhead
+        double durationMin = (distanceKm / 35.0) * 60.0 + 5.0;
+        return new RouteInfo(distanceKm, Math.max(5.0, durationMin));
     }
 
     private PredictionResult callMlOrFallback(DeliveryEtaMlRequest request) {
@@ -250,7 +271,17 @@ public class DeliveryEtaPredictionService {
     }
 
     private PredictionResult heuristicPrediction(DeliveryEtaMlRequest request) {
-        double minutes = Math.max(request.getRouteDurationMinutes(), request.getDistanceKm() * 4.2 + 8);
+        // Realistic base: 35 km/h average urban speed + 5 min fixed overhead
+        double baseMinutes = (request.getDistanceKm() / 35.0) * 60.0 + 5.0;
+
+        // Accept OSRM route duration only when it's plausible (≤ 20 km/h minimum speed).
+        // If OSRM/fallback returned something absurd (e.g. 4.5 min/km formula), ignore it.
+        double maxPlausibleMinutes = (request.getDistanceKm() / 20.0) * 60.0 + 10.0;
+        double routeDur = request.getRouteDurationMinutes();
+        double minutes = (routeDur > 0 && routeDur <= maxPlausibleMinutes)
+                ? Math.max(baseMinutes, routeDur)
+                : baseMinutes;
+
         int score = 0;
         StringBuilder reason = new StringBuilder();
         if (request.getDistanceKm() >= 12) {
@@ -268,7 +299,7 @@ public class DeliveryEtaPredictionService {
         if (request.getHourOfDay() != null && List.of(7, 8, 17, 18, 19).contains(request.getHourOfDay())) {
             score += 1;
             minutes *= 1.15;
-            appendReason(reason, "evening traffic");
+            appendReason(reason, "rush hour");
         }
         if (request.getWindSpeed() != null && request.getWindSpeed() >= 10) {
             score += 1;

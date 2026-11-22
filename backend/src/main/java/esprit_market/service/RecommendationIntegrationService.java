@@ -5,11 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-/**
- * Integration service for easy recommendation system integration
- * This service provides convenient methods to integrate ML recommendations
- * with existing marketplace operations
- */
+
 @Service
 @RequiredArgsConstructor
 @Slf4j

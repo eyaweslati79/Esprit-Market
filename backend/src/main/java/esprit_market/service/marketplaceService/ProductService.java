@@ -216,6 +216,15 @@ public class ProductService implements IProductService {
         existingProduct.setPrice(dto.getPrice());
         existingProduct.setStock(dto.getStock());
 
+        // Persist flash sale fields if provided
+        if (dto.getFlashSalePrice() != null) {
+            existingProduct.setFlashSaleActive(dto.isFlashSaleActive());
+            existingProduct.setFlashSalePrice(dto.getFlashSalePrice());
+            existingProduct.setFlashSaleStartTime(dto.getFlashSaleStartTime());
+            existingProduct.setFlashSaleEndTime(dto.getFlashSaleEndTime());
+            existingProduct.setFlashSaleMaxQuantity(dto.getFlashSaleMaxQuantity());
+        }
+
         // Validate Shop if changed
         if (dto.getShopId() != null) {
             ObjectId shopObjectId = new ObjectId(dto.getShopId());

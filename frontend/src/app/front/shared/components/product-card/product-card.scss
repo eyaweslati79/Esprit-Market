@@ -1,87 +1,365 @@
-/* Product Card Animations and UX Improvements */
-.line-clamp-2 {
+// ── Product Card ─────────────────────────────────────────────────────────────
+.pc {
+  background: var(--surface, #fff);
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--surface-border, #efefef);
+  transition: transform .35s cubic-bezier(.34,1.56,.64,1), box-shadow .35s ease;
+  cursor: pointer;
+  width: 240px;          // slightly larger card
+  flex-shrink: 0;
+
+  &:hover {
+    transform: translateY(-6px) scale(1.02);
+    box-shadow: 0 16px 40px rgba(0,0,0,.13);
+    border-color: rgba(128,0,0,.15);
+  }
+}
+
+// Image container — fixed square
+.pc-img-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  background: #f8f8f8;
+}
+
+.pc-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform .5s ease;
+  display: block;
+}
+
+// Favourite button — top-right, always visible
+.pc-fav-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.85);
+  backdrop-filter: blur(4px);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: color .2s, background .2s, transform .2s;
+
+  &:hover { color: #ef4444; background: #fff; transform: scale(1.15); }
+  &.pc-fav-active { color: #ef4444; }
+}
+
+// Hover overlay — two action buttons slide up
+.pc-overlay {
+  position: absolute;
+  inset-x: 0;
+  bottom: 0;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  background: linear-gradient(to top, rgba(0,0,0,.55) 0%, transparent 100%);
+  transform: translateY(100%);
+  transition: transform .3s ease;
+
+  .pc:hover & { transform: translateY(0); }
+}
+
+.pc-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+  transition: background .2s, transform .15s;
+
+  &:active { transform: scale(.97); }
+}
+
+.pc-action-qv {
+  background: rgba(255,255,255,.92);
+  color: #111;
+  &:hover { background: #fff; }
+}
+
+.pc-action-det {
+  background: #800000;
+  color: #fff;
+  &:hover { background: #a52a2a; }
+}
+
+// Badges
+.pc-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 20px;
+}
+
+.pc-badge-sale { background: #ef4444; color: #fff; }
+.pc-badge-low  { background: #f97316; color: #fff; }
+
+// Info panel
+.pc-info {
+  padding: 12px 14px 14px;
+}
+
+.pc-category {
+  font-size: 9px;
+  font-weight: 900;
+  color: #800000;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  margin-bottom: 4px;
+  opacity: .7;
+}
+
+.pc-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-color, #111);
+  line-height: 1.3;
+  margin-bottom: 6px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-/* Dark mode card background via CSS variable */
-.product-card {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background-color: var(--surface);
-  border-color: var(--surface-border);
-  color: var(--text-color);
+// Price row
+.pc-price-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
 }
 
-.product-card:hover {
-  transform: translateY(-8px);
+// Cart icon button
+.pc-cart-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: #800000;
+  color: #fff;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background .2s, transform .15s;
+
+  &:hover:not(:disabled) { background: #a52a2a; transform: scale(1.08); }
+  &:active { transform: scale(.95); }
+  &.pc-cart-disabled { background: #d1d5db; cursor: not-allowed; }
 }
 
-/* Button Pulse Animation */
-@keyframes pulse-gentle {
-  0%, 100% {
-    opacity: 1;
+// ── Netflix-style horizontal row ──────────────────────────────────────────────
+.pc-row-wrap {
+  position: relative;
+}
+
+.pc-row {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  padding-bottom: 8px;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+.pc-row-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 20;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 14px rgba(0,0,0,.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background .2s, box-shadow .2s, transform .2s;
+  color: #374151;
+
+  &:hover {
+    background: #800000;
+    color: #fff;
+    border-color: #800000;
+    box-shadow: 0 6px 20px rgba(128,0,0,.3);
+    transform: translateY(-50%) scale(1.08);
   }
-  50% {
-    opacity: 0.8;
-  }
+
+  &.prev { left: -18px; }
+  &.next { right: -18px; }
 }
 
-.btn-pulse {
-  animation: pulse-gentle 2s infinite;
+// ── Flash Sale Styles ─────────────────────────────────────────────────────────
+@keyframes flash-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(239,68,68,.6); }
+  50%       { opacity: .9; box-shadow: 0 0 0 5px rgba(239,68,68,0); }
+}
+@keyframes flash-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
 }
 
-/* Loading Shimmer Effect */
-@keyframes shimmer {
-  0% {
-    background-position: -200px 0;
-  }
-  100% {
-    background-position: calc(200px + 100%) 0;
-  }
+.flash-sale-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  background: linear-gradient(90deg, #ef4444, #dc2626, #ef4444);
+  background-size: 200% auto;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(239,68,68,.45);
+  animation: flash-pulse 1.5s ease-in-out infinite,
+             flash-shimmer 2.5s linear infinite;
 }
 
-.shimmer {
-  background: linear-gradient(90deg, var(--bg-subtle) 25%, var(--surface-border) 37%, var(--bg-subtle) 63%);
-  background-size: 400px 100%;
-  animation: shimmer 1.5s ease-in-out infinite;
+.flash-countdown {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(0,0,0,.7);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(239,68,68,.4);
+  border-radius: 8px;
+  padding: 4px 8px;
+  min-width: 64px;
+}
+.flash-countdown-label {
+  font-size: 7px;
+  font-weight: 700;
+  color: rgba(255,255,255,.6);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  line-height: 1;
+  margin-bottom: 1px;
+}
+.flash-countdown-time {
+  font-size: 12px;
+  font-weight: 900;
+  color: #fca5a5;
+  letter-spacing: .04em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 
-/* Success Animation */
-@keyframes success-bounce {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.1);
-  }
-  100% {
-    transform: scale(1);
-  }
+.flash-price-block { display: flex; flex-direction: column; gap: 1px; }
+.flash-price-original { font-size: 10px; color: #9ca3af; text-decoration: line-through; font-weight: 500; }
+.flash-price-row { display: flex; align-items: baseline; gap: 5px; }
+.flash-price-new { font-size: 1.1rem; font-weight: 900; color: #ef4444; line-height: 1; letter-spacing: -.02em; }
+.flash-price-pct {
+  display: inline-block;
+  padding: 1px 5px;
+  background: #fef2f2;
+  color: #ef4444;
+  font-size: 10px;
+  font-weight: 900;
+  border-radius: 20px;
+  border: 1px solid #fecaca;
 }
 
-.success-animation {
-  animation: success-bounce 0.6s ease-in-out;
+// ── Quick View Modal ──────────────────────────────────────────────────────────
+.qv-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn .2s ease;
 }
 
-/* Badge Animations */
-.badge-new {
-  animation: pulse-gentle 3s infinite;
+.qv-modal {
+  position: relative;
+  background: #fff;
+  border-radius: 20px;
+  overflow: hidden;
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 60px rgba(0,0,0,.25);
+  animation: slideUp .3s cubic-bezier(.34,1.56,.64,1);
 }
 
-/* Improved Focus States */
-button:focus-visible {
-  outline: 2px solid #3b82f6;
-  outline-offset: 2px;
+.qv-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 20;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(0,0,0,.45);
+  backdrop-filter: blur(4px);
+  border: none;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background .2s;
+  &:hover { background: rgba(0,0,0,.7); }
 }
 
-/* Responsive Text Scaling */
-@media (max-width: 640px) {
-  .product-card h3 {
-    font-size: 1.125rem;
-  }
-  .product-card .text-2xl {
-    font-size: 1.5rem;
-  }
+.qv-img-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4/3;
+  overflow: hidden;
+  background: #f8f8f8;
+}
+
+.qv-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.qv-content {
+  padding: 18px 20px 20px;
+}
+
+@keyframes fadeIn  { from { opacity: 0 } to { opacity: 1 } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(30px) scale(.97) } to { opacity: 1; transform: none } }
+
+// ── Misc ──────────────────────────────────────────────────────────────────────
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }

@@ -63,29 +63,50 @@
   <div class="section top-shops-section">
     <div class="section-header">
       <h2>🏪 Your Top Shops</h2>
-      <p class="section-subtitle">Rewards can only be used in these shops (based on last 30 days)</p>
+      <p class="section-subtitle">Your rewards are calculated based on your spending at each shop</p>
     </div>
 
     <div *ngIf="dashboard.topShops && dashboard.topShops.length > 0" class="shops-grid">
-      <div *ngFor="let shop of dashboard.topShops; let i = index" 
+      <div *ngFor="let shop of dashboard.topShops; let i = index"
            class="shop-card"
            (click)="goToShop(shop.shopId)">
-        <div class="shop-rank">
-          <span class="rank-badge">{{ i + 1 }}</span>
-        </div>
-        <div class="shop-icon">🏪</div>
-        <h3 class="shop-name">{{ shop.shopName }}</h3>
-        <div class="shop-stats">
-          <div class="shop-stat">
-            <span class="stat-icon">📦</span>
-            <span class="stat-text">{{ shop.orderCount }} orders</span>
-          </div>
-          <div class="shop-stat">
-            <span class="stat-icon">💰</span>
-            <span class="stat-text">{{ shop.totalSpent | number:'1.2-2' }} TND</span>
+
+        <!-- Rank -->
+        <div class="shop-rank-badge">#{{ i + 1 }}</div>
+
+        <!-- Shop name & stats -->
+        <div class="shop-top">
+          <div class="shop-icon-wrap">🏪</div>
+          <div>
+            <h3 class="shop-name">{{ shop.shopName }}</h3>
+            <p class="shop-meta">{{ shop.orderCount }} orders &bull; {{ shop.totalSpent | number:'1.2-2' }} TND spent</p>
           </div>
         </div>
-        <div class="shop-badge">✅ Rewards Valid Here</div>
+
+        <!-- Discount pill -->
+        <div class="shop-discount-pill" *ngIf="shop.discountPercentage > 0">
+          <span class="discount-pct">{{ shop.discountPercentage }}% OFF</span>
+          <span class="discount-pts">{{ shop.pointsFromShop }} pts earned here</span>
+        </div>
+        <div class="shop-discount-pill shop-discount-zero" *ngIf="!shop.discountPercentage || shop.discountPercentage === 0">
+          <span class="discount-pct">No discount yet</span>
+          <span class="discount-pts">Earn more points by shopping here</span>
+        </div>
+
+        <!-- Example calculation -->
+        <div class="shop-example" *ngIf="shop.discountPercentage > 0">
+          <div class="example-label">Example on a {{ shop.exampleOrderOriginal | number:'1.0-0' }} TND order:</div>
+          <div class="example-calc">
+            <span class="example-original">{{ shop.exampleOrderOriginal | number:'1.0-0' }} TND</span>
+            <svg class="example-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7-7 7"/>
+            </svg>
+            <span class="example-after">{{ shop.exampleOrderAfterDiscount | number:'1.0-0' }} TND</span>
+            <span class="example-save">Save {{ shop.maxDiscountTnd | number:'1.0-0' }} TND</span>
+          </div>
+        </div>
+
+        <div class="shop-valid-badge">✅ Rewards Valid Here</div>
       </div>
     </div>
 

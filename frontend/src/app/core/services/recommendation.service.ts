@@ -54,10 +54,13 @@ export class RecommendationService {
   recommendations = this._recommendations.asReadonly();
 
   /**
-   * Get product recommendations for a user
+   * Get product recommendations for a user, optionally filtered by category
    */
-  getRecommendations(userId: string): Observable<RecommendationResponse> {
-    return this.http.get<RecommendationResponse>(`${this.apiUrl}/${userId}`).pipe(
+  getRecommendations(userId: string, category?: string): Observable<RecommendationResponse> {
+    const url = category
+      ? `${this.apiUrl}/${userId}?category=${encodeURIComponent(category)}`
+      : `${this.apiUrl}/${userId}`;
+    return this.http.get<RecommendationResponse>(url).pipe(
       tap(response => {
         if (response && response.recommendations) {
           this._recommendations.set(response.recommendations);
@@ -73,6 +76,28 @@ export class RecommendationService {
           generated_at: new Date().toISOString()
         } as RecommendationResponse);
       })
+    );
+  }
+
+  /**
+   * Product-page recommendations — ONLY same category as the viewed product
+   */
+  getProductPageRecommendations(userId: string, productId: string): Observable<RecommendationResponse> {
+    const url = `${this.apiUrl}/product/${userId}?productId=${encodeURIComponent(productId)}`;
+    return this.http.get<RecommendationResponse>(url).pipe(
+      catchError(() => this.getRecommendations(userId))  // fallback to generic
+    );
+  }
+
+  /**
+   * Cart-page recommendations — ONLY categories present in the cart
+   */
+  getCartRecommendations(userId: string, cartProductIds: string[]): Observable<RecommendationResponse> {
+    return this.http.post<RecommendationResponse>(`${this.apiUrl}/cart`, {
+      userId,
+      cartProductIds
+    }).pipe(
+      catchError(() => this.getRecommendations(userId))  // fallback to generic
     );
   }
 

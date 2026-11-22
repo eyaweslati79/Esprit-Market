@@ -8,6 +8,7 @@ import esprit_market.repository.SAVRepository.SavFeedbackRepository;
 import esprit_market.repository.cartRepository.OrderItemRepository;
 import esprit_market.repository.cartRepository.OrderRepository;
 import esprit_market.repository.userRepository.UserRepository;
+import esprit_market.service.cartService.StockManagementService;
 import esprit_market.entity.cart.OrderItem;
 import esprit_market.entity.cart.Order;
 import esprit_market.entity.user.User;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -30,8 +32,17 @@ public class SavFeedbackService implements ISavFeedbackService {
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
     private final SAVMapper savMapper;
+    private final StockManagementService stockManagementService;
     /** Keyword-based urgency scorer — injected, stateless, no external APIs. */
     private final ClaimPriorityScorer priorityScorer;
+
+    /**
+     * Solutions that imply the item is physically returned to the shop
+     * and stock should be restored when the admin resolves the claim.
+     */
+    private static final Set<String> RESTOCK_SOLUTIONS = Set.of(
+            "REFUND", "EXCHANGE", "RESHIP"
+    );
 
     /**
      * Create a new SAV claim for a client
@@ -281,27 +292,68 @@ public class SavFeedbackService implements ISavFeedbackService {
     }
 
     /**
-     * Update feedback status
+     * Update feedback status.
+     * When admin resolves a SAV claim whose desiredSolution implies a physical return
+     * (REFUND, EXCHANGE, RESHIP), the linked product stock is restored automatically.
      */
     @Override
     public SavFeedbackResponseDTO updateFeedbackStatus(String id, String status) {
         SavFeedback feedback = savFeedbackRepository.findById(new ObjectId(id))
                 .orElseThrow(() -> new RuntimeException("Feedback not found: " + id));
-        
+
+        String previousStatus = feedback.getStatus();
         feedback.setStatus(status);
         feedback.setLastUpdatedDate(LocalDateTime.now());
-        
+
         // Mark as read by admin if status changes from PENDING
         if (!"PENDING".equalsIgnoreCase(status)) {
             feedback.setReadByAdmin(true);
         }
-        
+
         // Set resolved date if status is RESOLVED
         if ("RESOLVED".equalsIgnoreCase(status)) {
             feedback.setResolvedDate(LocalDateTime.now());
+
+            // ── Restock logic ──────────────────────────────────────────────
+            // Trigger only once: when transitioning INTO RESOLVED from a non-resolved state
+            boolean wasAlreadyResolved = "RESOLVED".equalsIgnoreCase(previousStatus);
+            boolean isSavClaim        = "SAV".equalsIgnoreCase(feedback.getType());
+            boolean needsRestock      = feedback.getDesiredSolution() != null
+                    && RESTOCK_SOLUTIONS.contains(feedback.getDesiredSolution().toUpperCase());
+
+            if (!wasAlreadyResolved && isSavClaim && needsRestock && feedback.getCartItemId() != null) {
+                restoreStockForClaim(feedback);
+            }
         }
-        
+
         return toResponseWithNames(savFeedbackRepository.save(feedback));
+    }
+
+    /**
+     * Restore stock for the OrderItem linked to a resolved SAV claim.
+     * Looks up the OrderItem by cartItemId, then calls StockManagementService.restoreStock.
+     */
+    private void restoreStockForClaim(SavFeedback feedback) {
+        try {
+            OrderItem orderItem = orderItemRepository.findById(feedback.getCartItemId())
+                    .orElse(null);
+            if (orderItem == null) {
+                log.warn("SAV restock: OrderItem {} not found for claim {}",
+                        feedback.getCartItemId(), feedback.getId());
+                return;
+            }
+            if (orderItem.getProductId() == null) {
+                log.warn("SAV restock: OrderItem {} has no productId", orderItem.getId());
+                return;
+            }
+            int qty = orderItem.getQuantity() != null ? orderItem.getQuantity() : 1;
+            stockManagementService.restoreStock(orderItem.getProductId(), qty);
+            log.info("✅ SAV restock: restored {} unit(s) of product {} for claim {} (solution: {})",
+                    qty, orderItem.getProductId(), feedback.getId(), feedback.getDesiredSolution());
+        } catch (Exception e) {
+            // Never let a restock failure block the status update
+            log.error("❌ SAV restock failed for claim {}: {}", feedback.getId(), e.getMessage());
+        }
     }
 
     /**

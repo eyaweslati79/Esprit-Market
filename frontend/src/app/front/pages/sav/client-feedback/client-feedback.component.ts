@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -10,28 +10,31 @@ import {
   SavFeedback,
   SavFeedbackRequest
 } from '../../../../back/core/models/sav.models';
+import { OrderService } from '../../../core/order.service';
+import { OrderResponse, OrderItemResponse } from '../../../models/order.model';
 import { environment } from '../../../../../environment';
 import { finalize, forkJoin } from 'rxjs';
 
+// Flat item option used by the form and feedback lookup
 interface CartItemOption {
-  id: string;
+  id: string;           // OrderItem ID — sent as cartItemId to backend
   productId?: string;
   name: string;
   quantity: number;
   unitPrice: number;
+  orderNumber: string;  // for display
+  orderDate: string;
+  orderStatus: string;
   sourceIds?: string[];
-}
-
-interface CartItemApiResponse {
-  id: string;
-  productId?: string;
-  productName: string;
-  quantity: number;
-  unitPrice: number;
 }
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
+
+// Eligible order statuses for SAV
+const ELIGIBLE_STATUSES = new Set([
+  'CONFIRMED', 'PREPARING', 'IN_TRANSIT', 'DELIVERED', 'RETURNED', 'RESTOCKED'
+]);
 
 @Component({
   selector: 'app-client-feedback',
@@ -40,36 +43,52 @@ const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
   templateUrl: './client-feedback.component.html'
 })
 export class ClientFeedbackComponent {
-  private savService = inject(SavService);
-  private fb = inject(FormBuilder);
-  private http = inject(HttpClient);
+  private savService   = inject(SavService);
+  private orderService = inject(OrderService);
+  private fb           = inject(FormBuilder);
+  private http         = inject(HttpClient);
 
   // ── List / search signals ────────────────────────────────────────────────
-  searchItemId       = signal<string>('');
-  feedbacks          = signal<SavFeedback[] | null>(null);
-  isSearching        = signal<boolean>(false);
-  hasSearched        = signal<boolean>(false);
-  myFeedbacks        = signal<SavFeedback[]>([]);
+  searchItemId         = signal<string>('');
+  feedbacks            = signal<SavFeedback[] | null>(null);
+  isSearching          = signal<boolean>(false);
+  hasSearched          = signal<boolean>(false);
+  myFeedbacks          = signal<SavFeedback[]>([]);
   isLoadingMyFeedbacks = signal<boolean>(false);
-  myFeedbacksError   = signal<string | null>(null);
+  myFeedbacksError     = signal<string | null>(null);
 
   // ── Form / submit signals ────────────────────────────────────────────────
-  showCreateForm = signal<boolean>(false);
+  showCreateForm  = signal<boolean>(false);
   editingFeedback = signal<SavFeedback | null>(null);
-  isSubmitting   = signal<boolean>(false);
-  successMsg     = signal<string | null>(null);
-  errorMsg       = signal<string | null>(null);
+  isSubmitting    = signal<boolean>(false);
+  successMsg      = signal<string | null>(null);
+  errorMsg        = signal<string | null>(null);
 
   // ── Image upload signals ─────────────────────────────────────────────────
   selectedImageFile = signal<File | null>(null);
   imagePreviewUrl   = signal<string | null>(null);
   imageError        = signal<string | null>(null);
 
-  // ── Cart items signals ───────────────────────────────────────────────────
+  // ── Orders / items signals ───────────────────────────────────────────────
+  /** Full order list (eligible statuses only) */
+  orders             = signal<OrderResponse[]>([]);
+  /** Flat list of all order items across all eligible orders */
   cartItems          = signal<CartItemOption[]>([]);
   private allPurchasedItems = signal<CartItemOption[]>([]);
   isLoadingCartItems = signal<boolean>(false);
   cartItemsError     = signal<string | null>(null);
+
+  // ── Status badge helpers ─────────────────────────────────────────────────
+  readonly orderStatusBadge: Record<string, string> = {
+    CONFIRMED:  'bg-blue-100 text-blue-700',
+    PREPARING:  'bg-amber-100 text-amber-700',
+    IN_TRANSIT: 'bg-indigo-100 text-indigo-700',
+    DELIVERED:  'bg-green-100 text-green-700',
+    RETURNED:   'bg-red-100 text-red-700',
+    RESTOCKED:  'bg-slate-100 text-slate-600',
+    PENDING:    'bg-yellow-100 text-yellow-700',
+    CANCELLED:  'bg-gray-100 text-gray-500',
+  };
 
   feedbackForm: FormGroup;
   ratingArray = [1, 2, 3, 4, 5];
@@ -117,7 +136,7 @@ export class ClientFeedbackComponent {
       positiveTags:     [[]],
       recommendsProduct:[true]
     });
-    this.loadMyCartItems();
+    this.loadMyOrders();
     this.setupTypeRules();
   }
 
@@ -155,54 +174,52 @@ export class ClientFeedbackComponent {
       .forEach(c => c?.updateValueAndValidity({ emitEvent: false }));
   }
 
-  // ── Cart items loading ───────────────────────────────────────────────────
+  // ── Orders loading ───────────────────────────────────────────────────────
 
-  private loadMyCartItems(): void {
+  private loadMyOrders(): void {
     this.isLoadingCartItems.set(true);
     this.cartItemsError.set(null);
-    this.http.get<CartItemApiResponse[]>(`${environment.apiUrl}/cart-items/my-purchased`).subscribe({
-      next: (items) => {
-        const mapped = (items ?? []).map(item => ({
-          id:        item.id,
-          productId: item.productId,
-          name:      item.productName || 'Unnamed product',
-          quantity:  item.quantity ?? 1,
-          unitPrice: item.unitPrice ?? 0
-        }));
-        this.allPurchasedItems.set(mapped);
-        this.cartItems.set(this.dedupeOrderedItems(mapped));
-        this.loadMyFeedbacks(mapped);
+
+    this.orderService.getMyOrders().subscribe({
+      next: (allOrders) => {
+        // Keep only orders with eligible statuses
+        const eligible = (allOrders ?? []).filter(o =>
+          ELIGIBLE_STATUSES.has(o.status) ||
+          // PENDING + PAID (card payment already charged)
+          (o.status === 'PENDING' && o.paymentStatus === 'PAID')
+        );
+        this.orders.set(eligible);
+
+        // Flatten all items into a single list for feedback lookup
+        const flat: CartItemOption[] = eligible.flatMap(order =>
+          (order.items ?? []).map(item => ({
+            id:          item.id,
+            productId:   item.productId,
+            name:        item.productName || 'Unnamed product',
+            quantity:    item.quantity ?? 1,
+            unitPrice:   item.productPrice ?? 0,
+            orderNumber: order.orderNumber,
+            orderDate:   order.createdAt,
+            orderStatus: order.status,
+            sourceIds:   [item.id]
+          }))
+        );
+
+        this.allPurchasedItems.set(flat);
+        this.cartItems.set(flat);
+        this.loadMyFeedbacks(flat);
         this.isLoadingCartItems.set(false);
       },
       error: (err) => {
-        console.error('Failed to load purchased items:', err);
+        console.error('Failed to load orders:', err);
+        this.orders.set([]);
         this.cartItems.set([]);
         this.allPurchasedItems.set([]);
         this.myFeedbacks.set([]);
-        this.cartItemsError.set('Unable to load your ordered items right now.');
+        this.cartItemsError.set('Unable to load your orders right now.');
         this.isLoadingCartItems.set(false);
       }
     });
-  }
-
-  private dedupeOrderedItems(items: CartItemOption[]): CartItemOption[] {
-    const byProduct = new Map<string, CartItemOption>();
-    for (const item of items) {
-      const key = this.orderedItemKey(item);
-      const existing = byProduct.get(key);
-      if (existing) {
-        existing.quantity += item.quantity || 0;
-        existing.sourceIds = [...(existing.sourceIds || [existing.id]), item.id];
-      } else {
-        byProduct.set(key, { ...item, sourceIds: [item.id] });
-      }
-    }
-    return Array.from(byProduct.values()).sort((a, b) => a.name.localeCompare(b.name));
-  }
-
-  private orderedItemKey(item: CartItemOption): string {
-    const productKey = item.productId || item.name;
-    return `${productKey}`.toLowerCase().trim() + `|${Number(item.unitPrice || 0).toFixed(2)}`;
   }
 
   private loadMyFeedbacks(items: CartItemOption[]): void {
@@ -232,9 +249,7 @@ export class ClientFeedbackComponent {
     const input = event.target as HTMLInputElement;
     const file  = input.files?.[0] ?? null;
     this.imageError.set(null);
-
     if (!file) return;
-
     if (!ALLOWED_MIME_TYPES.includes(file.type)) {
       this.imageError.set('Only JPG, JPEG, PNG or WEBP files are allowed.');
       input.value = '';
@@ -245,7 +260,6 @@ export class ClientFeedbackComponent {
       input.value = '';
       return;
     }
-
     this.selectedImageFile.set(file);
     const reader = new FileReader();
     reader.onload = () => this.imagePreviewUrl.set(reader.result as string);
@@ -264,8 +278,7 @@ export class ClientFeedbackComponent {
     const q = this.searchItemId().trim();
     if (!q) return;
     this.errorMsg.set(null);
-    const displayCartItemId = this.toDisplayCartItemId(q);
-    const selectedItem = this.cartItems().find(item => item.id === displayCartItemId);
+    const selectedItem = this.cartItems().find(item => item.id === q);
     if (!selectedItem) {
       this.errorMsg.set('Please use an item from your orders.');
       this.hasSearched.set(true);
@@ -274,11 +287,10 @@ export class ClientFeedbackComponent {
     }
     this.hasSearched.set(true);
     this.isSearching.set(true);
-    const sourceIds = selectedItem.sourceIds?.length ? selectedItem.sourceIds : [selectedItem.id];
-    forkJoin(sourceIds.map(id => this.savService.getFeedbacksByCartItem(id))).subscribe({
-      next: (groups) => {
+    this.savService.getFeedbacksByCartItem(selectedItem.id).subscribe({
+      next: (list) => {
         const byId = new Map<string, SavFeedback>();
-        for (const feedback of (groups ?? []).flat()) byId.set(feedback.id, feedback);
+        for (const fb of (list ?? [])) byId.set(fb.id, fb);
         this.feedbacks.set(Array.from(byId.values()).sort(
           (a, b) => new Date(b.creationDate).getTime() - new Date(a.creationDate).getTime()
         ));
@@ -312,15 +324,15 @@ export class ClientFeedbackComponent {
     this.editingFeedback.set(feedback);
     this.showCreateForm.set(true);
     this.feedbackForm.patchValue({
-      cartItemId:       this.toDisplayCartItemId(feedback.cartItemId),
-      type:             feedback.type,
-      rating:           feedback.rating,
-      reason:           feedback.reason || '',
-      message:          feedback.message,
-      problemNature:    feedback.problemNature || 'MISSING_ITEM',
-      priority:         feedback.priority || 'MODERATE',
-      desiredSolution:  feedback.desiredSolution || 'REFUND',
-      positiveTags:     feedback.positiveTags || [],
+      cartItemId:        feedback.cartItemId || '',
+      type:              feedback.type,
+      rating:            feedback.rating,
+      reason:            feedback.reason || '',
+      message:           feedback.message,
+      problemNature:     feedback.problemNature || 'MISSING_ITEM',
+      priority:          feedback.priority || 'MODERATE',
+      desiredSolution:   feedback.desiredSolution || 'REFUND',
+      positiveTags:      feedback.positiveTags || [],
       recommendsProduct: feedback.recommendsProduct ?? true
     });
     this.applyTypeRules();
@@ -348,32 +360,27 @@ export class ClientFeedbackComponent {
   // ── Submit ───────────────────────────────────────────────────────────────
 
   submitFeedback(): void {
-    if (this.feedbackForm.invalid) { 
-      this.feedbackForm.markAllAsTouched(); 
+    if (this.feedbackForm.invalid) {
+      this.feedbackForm.markAllAsTouched();
       this.errorMsg.set('Please fill in all required fields correctly.');
-      return; 
+      return;
     }
-
-    // Image required for claims (SAV), optional for feedback
     if (this.isComplaintType() && !this.selectedImageFile() && !this.editingFeedback()) {
       this.imageError.set('Please upload a product image.');
       this.errorMsg.set('Please upload a product image.');
       return;
     }
-
     this.isSubmitting.set(true);
     this.errorMsg.set(null);
     this.imageError.set(null);
 
     if (this.editingFeedback()) {
-      // Edit → keep existing JSON endpoint (image not re-uploaded)
       const payload: SavFeedbackRequest = this.buildJsonPayload();
       this.savService.updateFeedback(this.editingFeedback()!.id, payload).subscribe({
         next: () => this.onSubmitSuccess(true),
         error: () => this.onSubmitError()
       });
     } else {
-      // Create → use multipart endpoint
       const fd = this.buildFormData();
       this.http.post<SavFeedback>(`${environment.apiUrl}/sav-feedbacks/with-image`, fd).subscribe({
         next: () => this.onSubmitSuccess(false),
@@ -385,15 +392,12 @@ export class ClientFeedbackComponent {
   private onSubmitSuccess(isEdit: boolean): void {
     this.isSubmitting.set(false);
     const isComplaint = this.isComplaintType();
-    if (isEdit) {
-      this.successMsg.set('Your request has been updated successfully.');
-    } else {
-      this.successMsg.set(
-        isComplaint
-          ? 'Your claim has been submitted successfully.'
-          : 'Your feedback has been submitted successfully.'
-      );
-    }
+    this.successMsg.set(isEdit
+      ? 'Your request has been updated successfully.'
+      : isComplaint
+        ? 'Your claim has been submitted successfully.'
+        : 'Your feedback has been submitted successfully.'
+    );
     this.editingFeedback.set(null);
     this.resetForm();
     this.loadMyFeedbacks(this.allPurchasedItems());
@@ -419,27 +423,22 @@ export class ClientFeedbackComponent {
     const v           = this.feedbackForm.getRawValue();
     const isComplaint = this.isComplaintType();
     const fd          = new FormData();
-    const cartItemId  = this.toPayloadCartItemId(v.cartItemId);
-
     fd.append('type',       v.type);
-    fd.append('cartItemId', cartItemId);
+    fd.append('cartItemId', v.cartItemId);
     fd.append('message',    v.message);
     fd.append('rating',     String(isComplaint ? 3 : Number(v.rating || 5)));
     if (v.reason) fd.append('reason', v.reason);
-
     if (isComplaint) {
       if (v.problemNature)   fd.append('problemNature',   v.problemNature);
       if (v.priority)        fd.append('priority',        v.priority);
       if (v.desiredSolution) fd.append('desiredSolution', v.desiredSolution);
     } else {
-      if (v.recommendsProduct !== null && v.recommendsProduct !== undefined)
+      if (v.recommendsProduct != null)
         fd.append('recommendsProduct', String(v.recommendsProduct));
       (v.positiveTags as string[] || []).forEach(tag => fd.append('positiveTags', tag));
     }
-
     const file = this.selectedImageFile();
     if (file) fd.append('image', file);
-
     return fd;
   }
 
@@ -447,10 +446,9 @@ export class ClientFeedbackComponent {
     const v           = this.feedbackForm.getRawValue();
     const isComplaint = v.type === 'SAV';
     const existing    = this.editingFeedback();
-    const cartItemId  = this.toPayloadCartItemId(v.cartItemId);
     return {
       type:             v.type,
-      cartItemId,
+      cartItemId:       v.cartItemId,
       reason:           v.reason || '',
       message:          v.message,
       rating:           isComplaint ? 3 : Number(v.rating || 5),
@@ -467,9 +465,10 @@ export class ClientFeedbackComponent {
 
   // ── Helpers ──────────────────────────────────────────────────────────────
 
-  setRating(val: number)              { this.feedbackForm.patchValue({ rating: val }); }
+  setRating(val: number)                  { this.feedbackForm.patchValue({ rating: val }); }
   setPriority(priority: FeedbackPriority) { this.feedbackForm.patchValue({ priority }); }
-  setRecommend(value: boolean)        { this.feedbackForm.patchValue({ recommendsProduct: value }); }
+  setRecommend(value: boolean)            { this.feedbackForm.patchValue({ recommendsProduct: value }); }
+  selectCartItem(id: string)              { this.feedbackForm.patchValue({ cartItemId: id }); }
 
   togglePositiveTag(tag: string): void {
     const current = (this.feedbackForm.get('positiveTags')?.value as string[]) || [];
@@ -485,19 +484,18 @@ export class ClientFeedbackComponent {
   messageRemaining(): number             { return Math.max(0, this.messageLimit() - this.messageLength()); }
   canEdit(feedback: SavFeedback): boolean{ return feedback.status === 'PENDING'; }
 
-  private toDisplayCartItemId(cartItemId?: string): string {
-    if (!cartItemId) return '';
-    const visibleItem = this.cartItems().find(item => item.id === cartItemId || item.sourceIds?.includes(cartItemId));
-    return visibleItem?.id || cartItemId;
+  getOrderStatusBadge(status: string): string {
+    return this.orderStatusBadge[status] ?? 'bg-gray-100 text-gray-500';
   }
 
-  private toPayloadCartItemId(selectedCartItemId: string): string {
-    const selectedItem = this.cartItems().find(item => item.id === selectedCartItemId);
-    const currentFeedback = this.editingFeedback();
-    if (currentFeedback?.cartItemId && selectedItem?.sourceIds?.includes(currentFeedback.cartItemId)) {
-      return currentFeedback.cartItemId;
-    }
-    return selectedCartItemId;
+  /** Items of a given order that are eligible for selection */
+  orderItems(order: OrderResponse): OrderItemResponse[] {
+    return order.items ?? [];
+  }
+
+  /** Whether a given order item is currently selected */
+  isItemSelected(itemId: string): boolean {
+    return this.feedbackForm.get('cartItemId')?.value === itemId;
   }
 
   displayedFeedbacks(): SavFeedback[] {
@@ -512,8 +510,8 @@ export class ClientFeedbackComponent {
     const stages: FeedbackStatus[] = ['PENDING', 'INVESTIGATING', 'RESOLVED'];
     const current = stages.indexOf(status);
     return [
-      { label: 'Submitted',     active: current >= 0 || status === 'REJECTED' || status === 'ARCHIVED' },
-      { label: 'In progress',   active: current >= 1 },
+      { label: 'Submitted',   active: current >= 0 || status === 'REJECTED' || status === 'ARCHIVED' },
+      { label: 'In progress', active: current >= 1 },
       { label: status === 'REJECTED' ? 'Rejected' : 'Resolved',
         active: current >= 2 || status === 'REJECTED' || status === 'ARCHIVED' }
     ];
@@ -525,14 +523,13 @@ export class ClientFeedbackComponent {
 
   formatDate(date: string): string {
     if (!date) return '-';
-    return new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    return new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   }
 
   getItemName(cartItemId: string | undefined): string {
     if (!cartItemId) return 'Unknown Item';
-    const item = this.allPurchasedItems().find(i => i.id === cartItemId)
-      || this.cartItems().find(i => i.id === cartItemId || i.sourceIds?.includes(cartItemId));
-    return item ? item.name : 'Item (Load pending...)';
+    const item = this.allPurchasedItems().find(i => i.id === cartItemId);
+    return item ? item.name : 'Item (loading…)';
   }
 
   isFieldInvalid(field: string): boolean {

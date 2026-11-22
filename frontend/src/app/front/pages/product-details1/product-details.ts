@@ -2,25 +2,21 @@ import { Component, signal, computed, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { FormsModule } from '@angular/forms';
 import { Product, StockStatus, ProductCondition } from '../../models/product';
 import { ProductService } from '../../core/product.service';
 import { CartService } from '../../core/cart.service';
 import { ToastService } from '../../core/toast.service';
-import { NegotiationStatus, ProposalStatus } from '../../models/negotiation.model';
-
-interface NegotiationProposal {
-  id: string;
-  proposedBy: 'buyer' | 'seller';
-  amount: number;
-  message?: string;
-  status: ProposalStatus;
-  createdAt: Date;
-}
+import { AuthService } from '../../core/auth.service';
+import { ReviewService, ProductReview, ReviewableOrderItem } from '../../core/review.service';
+import { MarketplaceMLService, MarketplaceMLInsight } from '../../core/marketplace-ml.service';
+import { NegotiationService } from '../../core/negotiation.service';
+import { NegotiationStatus, NegotiationResponse, ProposalStatus } from '../../models/negotiation.model';
 
 @Component({
   selector: 'app-product-details',
   standalone: true,
-  imports: [CommonModule, RouterLink, ReactiveFormsModule],
+  imports: [CommonModule, RouterLink, ReactiveFormsModule, FormsModule],
   templateUrl: './product-details.html',
   styleUrl: './product-details.scss',
 })
@@ -30,10 +26,151 @@ export class ProductDetails implements OnInit {
   private productService = inject(ProductService);
   private cartService = inject(CartService);
   private toastService = inject(ToastService);
+  private authService = inject(AuthService);
+  private reviewService = inject(ReviewService);
+  private negotiationService = inject(NegotiationService);
   private fb = inject(FormBuilder);
+  readonly mlService = inject(MarketplaceMLService);
 
   // State
   product = signal<Product | null>(null);
+  mlInsight = signal<MarketplaceMLInsight | null>(null);
+
+  // ── Reviews ───────────────────────────────────────────────────────────────
+  reviews            = signal<ProductReview[]>([]);
+  reviewableItems    = signal<ReviewableOrderItem[]>([]);
+  reviewRating       = signal(0);
+  reviewHover        = signal(0);
+  reviewComment      = '';
+  isSubmittingReview = signal(false);
+  showReviewModal    = signal(false);
+  reviewValidationError = signal<'rating' | 'comment' | 'badword' | null>(null);
+  reviewValidationMsg   = signal('');
+
+  // Bad word list — mirrors backend BadWordFilter
+  private readonly BAD_WORDS = ['stupid', 'dumb', 'idiot', 'moron'];
+
+  openReviewModal(): void {
+    this.reviewRating.set(0);
+    this.reviewHover.set(0);
+    this.reviewComment = '';
+    this.reviewValidationError.set(null);
+    this.reviewValidationMsg.set('');
+    this.showReviewModal.set(true);
+  }
+
+  closeReviewModal(): void {
+    this.showReviewModal.set(false);
+  }
+
+  onReviewCommentChange(value: string): void {
+    this.reviewComment = value;
+    // Clear validation error as user types
+    if (this.reviewValidationError() === 'comment' || this.reviewValidationError() === 'badword') {
+      this.reviewValidationError.set(null);
+    }
+  }
+
+  private containsBadWord(text: string): string | null {
+    const lower = text.toLowerCase();
+    for (const word of this.BAD_WORDS) {
+      const regex = new RegExp(`\\b${word}\\b`, 'i');
+      if (regex.test(lower)) return word;
+    }
+    return null;
+  }
+
+  private validateReview(): boolean {
+    if (this.reviewRating() === 0) {
+      this.reviewValidationError.set('rating');
+      return false;
+    }
+    const comment = this.reviewComment.trim();
+    if (comment.length < 10) {
+      this.reviewValidationError.set('comment');
+      this.reviewValidationMsg.set('Review must be at least 10 characters.');
+      return false;
+    }
+    if (comment.length > 500) {
+      this.reviewValidationError.set('comment');
+      this.reviewValidationMsg.set('Review must be 500 characters or less.');
+      return false;
+    }
+    const badWord = this.containsBadWord(comment);
+    if (badWord) {
+      this.reviewValidationError.set('badword');
+      this.reviewValidationMsg.set(`Please keep your review respectful. The word "${badWord}" is not allowed.`);
+      return false;
+    }
+    this.reviewValidationError.set(null);
+    return true;
+  }
+
+  readonly hasReviewed = computed(() => {
+    const uid = this.authService.currentUser()?.id;
+    return uid ? this.reviews().some(r => r.customerId === uid) : false;
+  });
+
+  // Any logged-in user can write a review (verified badge shown if they bought it)
+  readonly canWriteReview = computed(() =>
+    this.authService.isAuthenticated() && !this.hasReviewed()
+  );
+
+  readonly avgRating = computed(() => {
+    const r = this.reviews();
+    if (!r.length) return 0;
+    return r.reduce((s, x) => s + x.rating, 0) / r.length;
+  });
+
+  readonly reviewRatingLabel = computed(() => {
+    const labels = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
+    return labels[this.reviewRating()] ?? '';
+  });
+
+  setReviewRating(n: number): void { this.reviewRating.set(n); }
+
+  getRatingCount(star: number): number {
+    return this.reviews().filter(r => r.rating === star).length;
+  }
+
+  getRatingBarPct(star: number): number {
+    const total = this.reviews().length;
+    return total ? (this.getRatingCount(star) / total) * 100 : 0;
+  }
+
+  submitReview(): void {
+    if (!this.validateReview()) return;
+
+    const product = this.product();
+    const user = this.authService.currentUser();
+    if (!product || !user) return;
+
+    // orderItemId is optional — only set if user has a verified purchase
+    const item = this.reviewableItems()[0];
+
+    this.isSubmittingReview.set(true);
+    this.reviewService.createReview({
+      productId: product.id,
+      customerId: user.id,
+      orderItemId: item?.orderItemId ?? '',   // empty string = not verified
+      rating: this.reviewRating(),
+      comment: this.reviewComment.trim(),
+    }).subscribe({
+      next: (review) => {
+        this.reviews.update(r => [review, ...r]);
+        this.reviewableItems.set([]);
+        this.reviewRating.set(0);
+        this.reviewComment = '';
+        this.isSubmittingReview.set(false);
+        this.closeReviewModal();
+        this.toastService.success('Review submitted! Thank you. 🌟');
+      },
+      error: (err) => {
+        this.isSubmittingReview.set(false);
+        this.toastService.error(err?.error?.message || 'Failed to submit review.');
+      }
+    });
+  }
 
   images = signal([
     'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?q=80&w=870&auto=format&fit=crop',
@@ -107,57 +244,21 @@ export class ProductDetails implements OnInit {
   // Negotiation state
   showNegotiationModal = signal(false);
   negotiationForm!: FormGroup;
-  isSubmittingOffer = signal(false);
+  isSubmittingOffer    = signal(false);
+  isPredicting         = signal(false);
   hasActiveNegotiation = signal(false);
-  negotiationStatus = signal<NegotiationStatus>(NegotiationStatus.PENDING);
-  aiSuggestedPrice = signal<number>(105);
-  
-  negotiationHistory = signal<NegotiationProposal[]>([
-    {
-      id: '1',
-      proposedBy: 'buyer',
-      amount: 100,
-      message: 'Would you accept 100 TND?',
-      status: ProposalStatus.COUNTER_OFFERED,
-      createdAt: new Date('2024-02-25T10:30:00')
-    },
-    {
-      id: '2',
-      proposedBy: 'seller',
-      amount: 110,
-      message: 'I can do 110 TND, best I can offer.',
-      status: ProposalStatus.PENDING,
-      createdAt: new Date('2024-02-25T14:15:00')
-    }
-  ]);
+  negotiationStatus    = signal<NegotiationStatus>(NegotiationStatus.PENDING);
+  activeNegotiation    = signal<NegotiationResponse | null>(null);
 
-  // Mock reviews
-  reviews = signal([
-    {
-      id: '1',
-      userName: 'Ahmed B.',
-      rating: 5,
-      comment: 'Excellent quality! Perfect for my MacBook. Highly recommended for fellow students.',
-      date: new Date('2024-02-10'),
-      verified: true
-    },
-    {
-      id: '2',
-      userName: 'Sara M.',
-      rating: 4,
-      comment: 'Good product, arrived quickly. The seller was very responsive.',
-      date: new Date('2024-02-05'),
-      verified: true
-    },
-    {
-      id: '3',
-      userName: 'Youssef K.',
-      rating: 5,
-      comment: 'Great value for money. Sturdy build and looks professional.',
-      date: new Date('2024-01-28'),
-      verified: false
-    }
-  ]);
+  // AI prediction result
+  aiAcceptProbability = signal<number | null>(null);
+  aiExplanation       = signal<string[]>([]);
+  aiSuggestedPrice    = signal<number | null>(null);
+
+  // Negotiation history is now driven by the real activeNegotiation signal
+  negotiationHistory = computed(() => this.activeNegotiation()?.proposals ?? []);
+
+  // Mock reviews removed — real reviews loaded from backend
 
   // Related products for AI recommendations
   relatedProducts = signal<Product[]>([
@@ -224,6 +325,26 @@ export class ProductDetails implements OnInit {
           const productImages = [product.imageUrl];
           this.images.set(productImages);
           this.selectedImage.set(product.imageUrl);
+        }
+
+        // Load reviews
+        this.reviewService.getProductReviews(product.id).subscribe({
+          next: (reviews) => this.reviews.set(reviews),
+          error: () => {}
+        });
+
+        // Load ML insight (non-blocking)
+        this.mlService.getProductInsight(product.id).subscribe({
+          next: (insight) => this.mlInsight.set(insight),
+          error: () => {}
+        });
+
+        // Check if current user can review (verified purchase)
+        if (this.authService.isAuthenticated()) {
+          this.reviewService.getReviewableOrderItems(product.id).subscribe({
+            next: (items) => this.reviewableItems.set(items),
+            error: () => {}
+          });
         }
       },
       error: (error) => {
@@ -442,17 +563,57 @@ export class ProductDetails implements OnInit {
   // Negotiation methods
   openNegotiationModal(): void {
     const product = this.product();
-    if (product) {
-      this.showNegotiationModal.set(true);
-      this.negotiationForm.patchValue({
-        proposedPrice: Math.floor(product.price * 0.9)
-      });
-    }
+    if (!product) return;
+    this.showNegotiationModal.set(true);
+    this.aiAcceptProbability.set(null);
+    this.aiExplanation.set([]);
+    this.negotiationForm.patchValue({
+      proposedPrice: Math.floor(product.price * 0.9),
+      message: ''
+    });
+    // Run AI prediction immediately with the pre-filled price
+    this._runAiPreview(product, Math.floor(product.price * 0.9));
   }
 
   closeNegotiationModal(): void {
     this.showNegotiationModal.set(false);
     this.negotiationForm.reset();
+    this.aiAcceptProbability.set(null);
+    this.aiExplanation.set([]);
+  }
+
+  /** Called whenever the proposed price changes — updates the AI preview live */
+  onProposedPriceChange(): void {
+    const product = this.product();
+    const price = this.negotiationForm.get('proposedPrice')?.value;
+    if (product && price > 0) {
+      this._runAiPreview(product, price);
+    }
+  }
+
+  private _runAiPreview(product: Product, proposedPrice: number): void {
+    this.isPredicting.set(true);
+    this.negotiationService.predictNegotiation({
+      productId: product.id,
+      proposedPrice,
+      quantity: this.quantity(),
+      message: this.negotiationForm.get('message')?.value || ''
+    }).subscribe({
+      next: (res) => {
+        this.isPredicting.set(false);
+        if (res.aiAcceptanceProbability != null) {
+          this.aiAcceptProbability.set(res.aiAcceptanceProbability);
+          this.aiExplanation.set(res.aiExplanation ?? []);
+          // Suggest a price that's 5% higher if acceptance is low
+          if (res.aiAcceptanceProbability < 0.5) {
+            this.aiSuggestedPrice.set(Math.ceil(proposedPrice * 1.05));
+          } else {
+            this.aiSuggestedPrice.set(null);
+          }
+        }
+      },
+      error: () => this.isPredicting.set(false)
+    });
   }
 
   submitOffer(): void {
@@ -460,45 +621,80 @@ export class ProductDetails implements OnInit {
       this.negotiationForm.markAllAsTouched();
       return;
     }
+    const product = this.product();
+    if (!product) return;
 
     this.isSubmittingOffer.set(true);
     const { proposedPrice, message } = this.negotiationForm.value;
 
-    setTimeout(() => {
-      this.negotiationHistory.update(history => [
-        ...history,
-        {
-          id: `${history.length + 1}`,
-          proposedBy: 'buyer',
-          amount: proposedPrice,
-          message: message,
-          status: ProposalStatus.PENDING,
-          createdAt: new Date()
-        }
-      ]);
-      this.hasActiveNegotiation.set(true);
-      this.isSubmittingOffer.set(false);
-      this.closeNegotiationModal();
-    }, 1000);
-  }
-
-  acceptOffer(proposalId: string): void {
-    this.negotiationHistory.update(history =>
-      history.map(p => p.id === proposalId ? { ...p, status: ProposalStatus.ACCEPTED } : p)
-    );
-    this.negotiationStatus.set(NegotiationStatus.ACCEPTED);
-  }
-
-  rejectOffer(proposalId: string): void {
-    this.negotiationHistory.update(history =>
-      history.map(p => p.id === proposalId ? { ...p, status: ProposalStatus.REJECTED } : p)
-    );
+    this.negotiationService.createNegotiation({
+      productId: product.id,
+      proposedPrice,
+      quantity: this.quantity(),
+      message
+    }).subscribe({
+      next: (neg) => {
+        this.isSubmittingOffer.set(false);
+        this.activeNegotiation.set(neg);
+        this.hasActiveNegotiation.set(true);
+        this.negotiationStatus.set(neg.status);
+        this.closeNegotiationModal();
+        this.toastService.success('Your offer has been submitted!');
+      },
+      error: (err) => {
+        this.isSubmittingOffer.set(false);
+        const msg = err?.error?.message || 'Failed to submit offer. Please try again.';
+        this.toastService.error(msg);
+      }
+    });
   }
 
   useAiSuggestedPrice(): void {
-    this.negotiationForm.patchValue({
-      proposedPrice: this.aiSuggestedPrice()
+    const suggested = this.aiSuggestedPrice();
+    if (suggested) {
+      this.negotiationForm.patchValue({ proposedPrice: suggested });
+      this._runAiPreview(this.product()!, suggested);
+    }
+  }
+
+  acceptOffer(proposalId: string): void {
+    const neg = this.activeNegotiation();
+    if (!neg) return;
+    this.negotiationService.accept(neg.id).subscribe({
+      next: (updated) => {
+        this.activeNegotiation.set(updated);
+        this.negotiationStatus.set(updated.status);
+        this.toastService.success('Offer accepted!');
+      },
+      error: () => this.toastService.error('Failed to accept offer.')
     });
+  }
+
+  rejectOffer(proposalId: string): void {
+    const neg = this.activeNegotiation();
+    if (!neg) return;
+    this.negotiationService.reject(neg.id).subscribe({
+      next: (updated) => {
+        this.activeNegotiation.set(updated);
+        this.negotiationStatus.set(updated.status);
+        this.toastService.info('Offer rejected.');
+      },
+      error: () => this.toastService.error('Failed to reject offer.')
+    });
+  }
+
+  /** Acceptance probability as a percentage string */
+  aiProbPct(): string {
+    const p = this.aiAcceptProbability();
+    return p != null ? `${Math.round(p * 100)}%` : '—';
+  }
+
+  /** Tailwind color class for the probability bar */
+  aiProbColor(): string {
+    const p = this.aiAcceptProbability() ?? 0;
+    if (p >= 0.7) return 'bg-green-500';
+    if (p >= 0.45) return 'bg-amber-400';
+    return 'bg-red-500';
   }
 
   // Stock status helpers

@@ -54,4 +54,18 @@ public class ProductResponseDTO {
      * Values: NEW_SELLER, GROWING_SELLER, TRUSTED_SELLER, TOP_SELLER
      */
     private String trustBadge;
+
+    // ── Flash Sale ────────────────────────────────────────────────────────────
+    private boolean flashSaleActive;
+    private Double flashSalePrice;
+    private java.time.LocalDateTime flashSaleStartTime;
+    private java.time.LocalDateTime flashSaleEndTime;
+    private Integer flashSaleMaxQuantity;
+    private Integer flashSaleSoldQuantity;
+    /** Computed: true if flash sale is currently live */
+    private boolean flashSaleLive;
+
+    // ── Rating & Reviews ──────────────────────────────────────────────────────
+    private double averageRating;
+    private long reviewsCount;
 }

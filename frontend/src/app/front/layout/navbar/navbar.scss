@@ -1,0 +1,101 @@
+// ── Promo Bar ─────────────────────────────────────────────────────────────────
+.promo-bar {
+  position: relative;
+  overflow: hidden;
+  padding: 9px 0;
+  background: linear-gradient(90deg, #1a0000 0%, #800000 20%, #3d0000 40%, #800000 60%, #1a0000 80%, #800000 100%);
+  background-size: 300% 100%;
+  animation: barShift 6s linear infinite;
+  border-bottom: 1px solid rgba(255,80,80,.2);
+  box-shadow: 0 2px 16px rgba(128,0,0,.4);
+
+  // Edge fade masks
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 80px;
+    z-index: 10;
+    pointer-events: none;
+  }
+  &::before {
+    left: 0;
+    background: linear-gradient(to right, #1a0000, transparent);
+  }
+  &::after {
+    right: 0;
+    background: linear-gradient(to left, #1a0000, transparent);
+  }
+}
+
+@keyframes barShift {
+  0%   { background-position: 0% 0%; }
+  100% { background-position: 300% 0%; }
+}
+
+// ── Ticker ────────────────────────────────────────────────────────────────────
+.navbar-ticker-track {
+  display: flex;
+  white-space: nowrap;
+  animation: navbarTicker 32s linear infinite;
+
+  &:hover { animation-play-state: paused; }
+}
+
+.navbar-ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: .7rem;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding-right: 2.5rem;
+  flex-shrink: 0;
+}
+
+.nb-icon {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  color: #ff9999;
+  opacity: .9;
+}
+
+.navbar-ticker-sep {
+  color: rgba(255,100,100,.45);
+  font-size: .5rem;
+  margin: 0 .2rem;
+}
+
+@keyframes navbarTicker {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+// ── Notification Dropdown ─────────────────────────────────────────────────────
+.notification-dropdown {
+  animation: notifSlideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+  transform-origin: top right;
+
+  // Scrollbar styling
+  .max-h-\[420px\] {
+    &::-webkit-scrollbar { width: 4px; }
+    &::-webkit-scrollbar-track { background: transparent; }
+    &::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
+    &::-webkit-scrollbar-thumb:hover { background: #800000; }
+  }
+}
+
+@keyframes notifSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}

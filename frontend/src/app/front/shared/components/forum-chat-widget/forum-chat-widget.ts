@@ -15,85 +15,88 @@ import { Subscription, of, catchError, take, interval, filter, Subject, debounce
   standalone: true,
   imports: [CommonModule, FormsModule, MediaStreamDirective],
   template: `
-    <!-- FLOATING CHAT BUTTON (Premium Maroon/Gold Theme) -->
-    <div class="fixed bottom-10 right-10 z-50">
-      <button (click)="toggleInbox(); loadInbox()" 
-              class="w-20 h-20 bg-gradient-to-tr from-[#800000] via-[#a52a2a] to-[#800000] text-white rounded-3xl shadow-[0_20px_50px_rgba(128,0,0,0.3)] flex items-center justify-center hover:scale-110 active:scale-95 transition-all group relative border-2 border-white/20 overflow-hidden">
-        <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
-        <svg class="w-10 h-10 group-hover:rotate-12 transition-transform relative z-10" fill="currentColor" viewBox="0 0 20 20">
-          <path d="M2 5a2 2 0 012-2h7a2 2 0 012-2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z"></path>
-          <path d="M15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h2a2 2 0 002-2V9a2 2 0 00-2-2h-1z"></path>
+    <!-- FLOATING CHAT BUTTON -->
+    <div class="fixed bottom-8 right-8 z-50">
+      <button (click)="toggleInbox(); loadInbox()"
+              class="w-14 h-14 bg-gradient-to-tr from-[#800000] to-[#a52a2a] text-white rounded-2xl shadow-[0_8px_24px_rgba(128,0,0,0.4)] flex items-center justify-center hover:scale-110 hover:-translate-y-1 active:scale-95 transition-all group relative overflow-hidden border border-white/10">
+        <!-- shimmer -->
+        <div class="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+        <!-- people/community icon -->
+        <svg class="w-6 h-6 relative z-10 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4" stroke-linecap="round"/>
+          <path stroke-linecap="round" d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
         </svg>
-        <div *ngIf="chatService.unreadTotal() > 0" class="absolute top-2 right-2 w-7 h-7 bg-[#E0B84A] text-[#800000] rounded-full border-4 border-white flex items-center justify-center text-[11px] font-black animate-bounce shadow-xl relative z-20">
+        <div *ngIf="chatService.unreadTotal() > 0"
+             class="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 bg-white text-[#800000] rounded-full border-2 border-[#800000] flex items-center justify-center text-[10px] font-black shadow-lg z-20">
           {{ chatService.unreadTotal() }}
         </div>
       </button>
     </div>
 
-    <!-- INBOX PANEL (Premium Glassmorphism) -->
+    <!-- INBOX PANEL -->
     @if (chatService.isInboxOpen()) {
-      <div class="fixed bottom-36 right-10 w-[450px] bg-white/95 backdrop-blur-3xl rounded-[40px] shadow-[0_50px_100px_rgba(0,0,0,0.3)] border border-gray-100 overflow-hidden z-50 flex flex-col font-sans max-h-[700px] animate-in fade-in slide-in-from-bottom-12 duration-700">
-        <div class="bg-gradient-to-br from-[#800000] via-[#a52a2a] to-[#500000] text-white p-10 relative overflow-hidden">
-          <div class="absolute top-0 right-0 w-64 h-64 bg-[#E0B84A]/10 rounded-full -mr-32 -mt-32 blur-3xl"></div>
-          <div class="relative z-10 flex justify-between items-center">
-            <div>
-              <h3 class="font-black text-3xl tracking-tighter flex items-center gap-4">
-                <span class="bg-white/10 p-3 rounded-2xl backdrop-blur-xl border border-white/20">💬</span> Messenger
-              </h3>
-              <p class="text-[10px] text-[#E0B84A] uppercase tracking-[0.3em] font-black mt-3 opacity-90">Esprit Student Network</p>
+      <div class="fixed bottom-28 right-8 w-[320px] bg-white rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.18)] border border-gray-100 overflow-hidden z-50 flex flex-col max-h-[480px] animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-[#800000] to-[#a52a2a] text-white px-5 py-4 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-white/15 rounded-xl flex items-center justify-center border border-white/20">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path stroke-linecap="round" d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
             </div>
-            <div class="flex gap-4">
-              <button (click)="loadInbox()" class="bg-white/5 hover:bg-white/10 rounded-2xl p-4 transition-all border border-white/10 group">
-                <svg class="w-6 h-6 group-hover:rotate-180 transition-all duration-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m0 0H15" stroke-width="3"></path></svg>
-              </button>
-              <button (click)="toggleInbox()" class="bg-white/5 hover:bg-white/10 rounded-2xl p-4 transition-all border border-white/10">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"></path></svg>
-              </button>
+            <div>
+              <h3 class="font-black text-base tracking-tight leading-none">Messenger</h3>
+              <p class="text-[9px] text-white/60 uppercase tracking-widest font-bold mt-0.5">Esprit Network</p>
             </div>
           </div>
+          <div class="flex gap-1.5">
+            <button (click)="loadInbox()" class="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-lg flex items-center justify-center transition-all group">
+              <svg class="w-3.5 h-3.5 group-hover:rotate-180 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m0 0H15" stroke-width="2.5"></path></svg>
+            </button>
+            <button (click)="toggleInbox()" class="w-8 h-8 bg-white/10 hover:bg-red-500/80 rounded-lg flex items-center justify-center transition-all">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+          </div>
         </div>
-        
-        <div class="overflow-y-auto flex-1 bg-gray-50/30 custom-scrollbar p-6">
+
+        <!-- Conversation list -->
+        <div class="overflow-y-auto flex-1 bg-gray-50/50 custom-scrollbar">
           @if (isInboxLoading()) {
-            <div class="p-24 text-center">
-               <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-[#800000] border-t-transparent mb-8"></div>
-               <p class="text-gray-400 font-black uppercase tracking-widest text-xs">Authenticating connection...</p>
+            <div class="p-10 text-center">
+              <div class="inline-block animate-spin rounded-full h-8 w-8 border-2 border-[#800000] border-t-transparent mb-3"></div>
+              <p class="text-gray-400 font-bold text-xs uppercase tracking-wider">Connecting…</p>
             </div>
           } @else if (inboxConversations().length === 0) {
-            <div class="p-24 text-center opacity-40">
-              <div class="text-8xl mb-8">📭</div>
-              <p class="text-gray-500 font-black text-sm uppercase tracking-widest">No active conversations</p>
+            <div class="p-10 text-center opacity-50">
+              <div class="text-4xl mb-3">📭</div>
+              <p class="text-gray-500 font-bold text-xs uppercase tracking-wider">No conversations yet</p>
             </div>
           }
-          
-          <div class="space-y-4">
+
+          <div class="p-2 space-y-1">
             @for (conv of inboxConversations(); track conv.conversationId) {
               <div (click)="openPopup(conv.otherUser?.id!)"
-                class="flex items-center p-6 cursor-pointer bg-white rounded-[32px] hover:bg-gray-50 transition-all group border border-gray-100 hover:border-[#800000]/20 transform hover:-translate-y-1 shadow-sm hover:shadow-xl">
-                <div class="relative">
-                  <img [src]="getAvatarUrl(conv.otherUser?.profileImage)" class="w-20 h-20 rounded-[24px] object-cover shadow-lg border-2 border-white group-hover:rotate-3 transition-all">
-                  <!-- ✅ Real-time presence dot -->
-                  <div class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-4 border-white shadow-sm"
+                class="flex items-center gap-3 p-3 cursor-pointer bg-white hover:bg-[#800000]/5 rounded-xl transition-all group border border-transparent hover:border-[#800000]/10 hover:shadow-sm">
+                <div class="relative flex-shrink-0">
+                  <img [src]="getAvatarUrl(conv.otherUser?.profileImage)" class="w-10 h-10 rounded-xl object-cover border border-gray-100">
+                  <div class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white"
                        [class.bg-green-500]="presenceService.getStatus(conv.otherUser?.id || '') === 'online'"
                        [class.bg-yellow-400]="presenceService.getStatus(conv.otherUser?.id || '') === 'away'"
-                       [class.bg-gray-400]="presenceService.getStatus(conv.otherUser?.id || '') === 'offline'">
+                       [class.bg-gray-300]="presenceService.getStatus(conv.otherUser?.id || '') === 'offline'">
                   </div>
                 </div>
-                
-                <div class="ml-6 flex-1 overflow-hidden">
-                  <div class="flex justify-between items-baseline mb-2">
-                    <h4 class="font-black text-dark text-lg truncate transition-colors">
-                       {{ conv.otherUser?.fullName || 'Anonymous' }}
-                    </h4>
-                  </div>
-                  
-                  <div class="flex items-center justify-between">
-                    <p class="text-sm text-gray-500 truncate mt-1 pr-4 font-semibold">{{ conv.lastMessageContent || 'Attachment sent' }}</p>
-                    <div *ngIf="conv.flameLevel > 0" class="flame-badge" [ngClass]="getFlameClass(conv.flameLevel)">
-                       🔥 {{ conv.flameLevel }}
-                    </div>
-                  </div>
+                <div class="flex-1 min-w-0">
+                  <h4 class="font-bold text-sm text-gray-900 truncate group-hover:text-[#800000] transition-colors">
+                    {{ conv.otherUser?.fullName || 'Anonymous' }}
+                  </h4>
+                  <p class="text-xs text-gray-400 truncate font-medium mt-0.5">{{ conv.lastMessageContent || 'Attachment' }}</p>
                 </div>
+                @if (conv.flameLevel > 0) {
+                  <span class="text-xs font-black text-orange-500 flex-shrink-0">🔥{{ conv.flameLevel }}</span>
+                }
               </div>
             }
           </div>

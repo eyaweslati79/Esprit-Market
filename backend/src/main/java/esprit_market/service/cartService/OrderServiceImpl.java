@@ -28,6 +28,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -445,75 +446,60 @@ public class OrderServiceImpl implements IOrderService {
     
     @Override
     public List<OrderResponse> getUserOrders(ObjectId userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        
-        System.out.println("🔍 ORDER SERVICE DEBUG - Getting orders for user: " + user.getEmail() + " (ID: " + userId + ")");
-        
-        List<Order> orders = orderRepository.findByUserOrderByCreatedAtDesc(user);
-        System.out.println("🔍 ORDER SERVICE DEBUG - Found " + orders.size() + " orders in database");
-        
-        if (!orders.isEmpty()) {
-            System.out.println("🔍 ORDER SERVICE DEBUG - First order: " + orders.get(0).getOrderNumber() + " - Status: " + orders.get(0).getStatus());
-        }
-        
+        log.info("Fetching all orders for userId: {}", userId);
+
+        // Query directly by DBRef user.$id to avoid DBRef resolution issues
+        Query q = new Query(Criteria.where("user.$id").is(userId))
+                .with(org.springframework.data.domain.Sort.by(
+                        org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
+        List<Order> orders = mongoTemplate.find(q, Order.class);
+
+        log.info("Found {} orders for user {}", orders.size(), userId);
+        return orders.stream()
+                .map(this::buildOrderResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public org.springframework.data.domain.Page<OrderResponse> getUserOrdersPaginated(
+            ObjectId userId, org.springframework.data.domain.Pageable pageable) {
+
+        log.info("Fetching paginated orders for userId: {} — page {}, size {}",
+                userId, pageable.getPageNumber(), pageable.getPageSize());
+
+        // Count total matching documents
+        Query countQuery = new Query(Criteria.where("user.$id").is(userId));
+        long total = mongoTemplate.count(countQuery, Order.class);
+        log.info("Total orders for user {}: {}", userId, total);
+
+        // Fetch the requested page, sorted by createdAt desc
+        Query pageQuery = new Query(Criteria.where("user.$id").is(userId))
+                .with(org.springframework.data.domain.Sort.by(
+                        org.springframework.data.domain.Sort.Direction.DESC, "createdAt"))
+                .skip((long) pageable.getPageNumber() * pageable.getPageSize())
+                .limit(pageable.getPageSize());
+        List<Order> orders = mongoTemplate.find(pageQuery, Order.class);
+        log.info("Page {} contains {} orders", pageable.getPageNumber(), orders.size());
+
         List<OrderResponse> responses = orders.stream()
                 .map(this::buildOrderResponse)
                 .collect(Collectors.toList());
-        
-        System.out.println("🔍 ORDER SERVICE DEBUG - Returning " + responses.size() + " order responses");
-        return responses;
-    }
-    
-    @Override
-    public org.springframework.data.domain.Page<OrderResponse> getUserOrdersPaginated(ObjectId userId, org.springframework.data.domain.Pageable pageable) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        
-        log.info("🔍 PAGINATED ORDERS - Getting orders for user: {} (ID: {})", user.getEmail(), userId.toHexString());
-        log.info("🔍 PAGINATED ORDERS - Page: {}, Size: {}", pageable.getPageNumber(), pageable.getPageSize());
-        
-        // Debug: Check total orders for this user
-        List<Order> allUserOrders = orderRepository.findByUser(user);
-        log.info("🔍 PAGINATED ORDERS - Total orders for user in DB: {}", allUserOrders.size());
-        
-        if (!allUserOrders.isEmpty()) {
-            log.info("🔍 PAGINATED ORDERS - Sample order: {} | Status: {} | Created: {}", 
-                    allUserOrders.get(0).getOrderNumber(),
-                    allUserOrders.get(0).getStatus(),
-                    allUserOrders.get(0).getCreatedAt());
-        }
-        
-        org.springframework.data.domain.Page<Order> ordersPage = orderRepository.findByUser(user, pageable);
-        
-        log.info("🔍 PAGINATED ORDERS - Page results: {} orders (total elements: {}, total pages: {})", 
-                ordersPage.getNumberOfElements(), ordersPage.getTotalElements(), ordersPage.getTotalPages());
-        
-        if (ordersPage.hasContent()) {
-            Order firstOrder = ordersPage.getContent().get(0);
-            log.info("🔍 PAGINATED ORDERS - First order in page: {} | Status: {}", 
-                    firstOrder.getOrderNumber(), firstOrder.getStatus());
-        }
-        
-        org.springframework.data.domain.Page<OrderResponse> responsePage = ordersPage.map(this::buildOrderResponse);
-        
-        log.info("🔍 PAGINATED ORDERS - Returning {} order responses", responsePage.getNumberOfElements());
-        
-        return responsePage;
+
+        return new org.springframework.data.domain.PageImpl<>(responses, pageable, total);
     }
     
     @Override
     public OrderResponse getOrderById(ObjectId userId, ObjectId orderId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
-        
-        if (!order.getUser().getId().equals(userId)) {
+
+        // Verify ownership via the stored DBRef user.$id
+        Query ownerCheck = new Query(
+                Criteria.where("_id").is(orderId).and("user.$id").is(userId));
+        if (mongoTemplate.count(ownerCheck, Order.class) == 0) {
             throw new IllegalStateException("Order does not belong to user");
         }
-        
+
         return buildOrderResponse(order);
     }
     
@@ -1279,31 +1265,52 @@ public class OrderServiceImpl implements IOrderService {
 
     @Override
     public List<CartItemResponse> getPurchasedItemsForUser(ObjectId userId) {
-        // Get user
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        
-        // Get all completed orders for the user (CONFIRMED or with PAID payment status)
-        List<Order> orders = orderRepository.findByUser(user).stream()
-                .filter(o -> o.getStatus() == OrderStatus.CONFIRMED || 
-                            o.getStatus() == OrderStatus.DELIVERED ||
-                            o.getPaymentStatus() == PaymentStatus.PAID)
+        log.info("Fetching purchased items for userId: {}", userId);
+
+        // Query orders directly by the DBRef user.$id field to avoid DBRef resolution issues.
+        // Spring Data MongoDB translates "user.$id" to the correct DBRef query.
+        Query orderQuery = new Query(Criteria.where("user.$id").is(userId));
+        List<Order> allOrders = mongoTemplate.find(orderQuery, Order.class);
+        log.info("Found {} total orders for user {}", allOrders.size(), userId);
+
+        // Keep only orders where the item has actually been purchased:
+        // all post-confirmation statuses + PENDING with PAID payment (card payment)
+        List<OrderStatus> eligibleStatuses = List.of(
+                OrderStatus.CONFIRMED,
+                OrderStatus.PREPARING,
+                OrderStatus.IN_TRANSIT,
+                OrderStatus.DELIVERED,
+                OrderStatus.RETURNED,
+                OrderStatus.RESTOCKED
+        );
+
+        List<Order> purchasedOrders = allOrders.stream()
+                .filter(o -> {
+                    OrderStatus s = o.getStatus();
+                    if (s == null) return false;
+                    if (eligibleStatuses.contains(s)) return true;
+                    // PENDING but card-paid — item is already purchased
+                    return s == OrderStatus.PENDING && o.getPaymentStatus() == PaymentStatus.PAID;
+                })
                 .collect(Collectors.toList());
-        
-        // Collect all order items from these orders
-        List<CartItemResponse> purchasedItems = orders.stream()
+        log.info("Found {} eligible orders for SAV for user {}", purchasedOrders.size(), userId);
+
+        // Collect all order items from eligible orders
+        List<CartItemResponse> purchasedItems = purchasedOrders.stream()
                 .flatMap(order -> orderItemRepository.findByOrderId(order.getId()).stream())
                 .map(orderItem -> {
                     CartItemResponse response = new CartItemResponse();
-                    response.setId(orderItem.getId().toString());
-                    response.setProductId(orderItem.getProductId().toString());
+                    response.setId(orderItem.getId().toHexString());
+                    response.setProductId(orderItem.getProductId() != null
+                            ? orderItem.getProductId().toHexString() : null);
                     response.setProductName(orderItem.getProductName());
                     response.setQuantity(orderItem.getQuantity());
                     response.setUnitPrice(orderItem.getProductPrice());
                     return response;
                 })
                 .collect(Collectors.toList());
-        
+
+        log.info("Returning {} purchased items for user {}", purchasedItems.size(), userId);
         return purchasedItems;
     }
 }

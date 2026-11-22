@@ -1,990 +1,610 @@
-<div class="forum-container">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 animate-in fade-in slide-in-from-bottom-8 duration-1000 ease-out">
+﻿<div class="f-page">
 
-        <!-- Hero Section -->
-        <div class="hero-glass">
-            <div class="hero-content flex flex-col lg:flex-row items-center justify-between gap-12">
-                <div class="text-center lg:text-left">
-                    <div class="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full mb-6">
-                        <span class="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
-                        <span class="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Esprit Official
-                            Network</span>
-                    </div>
-                    <h1 class="text-7xl font-black text-dark tracking-tighter mb-4">Esprit <span
-                            class="text-primary">Hub</span></h1>
-                    <p class="text-xl text-gray-500 font-medium max-w-xl leading-relaxed">
-                        Connect with fellow students, share resources, and spark innovation in the university's official
-                        discussion space.
-                    </p>
-                </div>
+<!-- ══ HERO SECTION — full width, outside the content wrapper ══════════════ -->
+<div class="f-hero-section">
+  <!-- Background Video -->
+  <video autoplay muted loop playsinline class="f-hero-video" preload="auto">
+    <source src="assets/forum.mp4" type="video/mp4">
+  </video>
 
-                <div class="flex flex-col sm:flex-row items-center gap-6">
-                    <!-- Chat Inbox Toggle -->
-                    <button (click)="chatService.toggleInbox()"
-                        class="group relative w-16 h-16 flex items-center justify-center bg-white rounded-3xl shadow-xl hover:shadow-2xl hover:border-primary/30 transition-all border border-gray-100">
-                        <svg class="w-8 h-8 text-gray-400 group-hover:text-primary transition-colors" fill="none"
-                            stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                        </svg>
-                        @if (chatService.unreadTotal() > 0) {
-                        <span
-                            class="absolute -top-2 -right-2 w-7 h-7 bg-primary text-white text-[11px] font-black rounded-full flex items-center justify-center border-4 border-white animate-bounce shadow-lg">
-                            {{ chatService.unreadTotal() }}
-                        </span>
-                        }
-                    </button>
+  <!-- Dark Overlay -->
+  <div class="f-hero-overlay"></div>
 
-                    <button (click)="openCreatePostModal()"
-                        class="btn-mesh py-5 px-12 text-xl shadow-[0_20px_50px_rgba(128,0,0,0.3)]">
-                        <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4" />
-                        </svg>
-                        Start Discussion
-                    </button>
-                </div>
-            </div>
-        </div>
+  <!-- Pattern Overlay -->
+  <div class="f-hero-pattern"></div>
 
-        <!-- ── AI Semantic Search Bar removed — consolidated in sidebar ── -->
-
-        <div class="flex flex-col lg:flex-row gap-12">
-            <!-- Sidebar: Categories + AI -->
-            <aside class="w-full lg:w-80 flex-shrink-0 space-y-6">
-
-                <!-- ── AI Semantic Search — single self-contained section ── -->
-                <div class="rounded-3xl border border-primary/20 bg-white shadow-lg overflow-hidden">
-
-                  <!-- Header -->
-                  <div class="px-5 pt-5 pb-4 bg-gradient-to-br from-primary/8 via-white to-white border-b border-primary/10">
-                    <div class="flex items-center gap-3 mb-3">
-                      <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                        <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
-                        </svg>
-                      </div>
-                      <div>
-                        <p class="text-sm font-black text-dark uppercase tracking-wider leading-none">AI Forum Search</p>
-                        <p class="text-[10px] text-gray-400 font-semibold mt-0.5">Semantic · MiniLM-L6-v2 + FAISS</p>
-                      </div>
-                    </div>
-
-                    <!-- Input -->
-                    <div class="relative">
-                      <input
-                        type="text"
-                        [value]="searchQuery()"
-                        (input)="onSearchInput($any($event.target).value)"
-                        placeholder="Describe your problem…"
-                        autocomplete="off"
-                        class="w-full h-11 pl-4 pr-10 text-sm font-semibold text-dark bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/10 transition-all placeholder:text-gray-400 placeholder:font-normal">
-                      @if (aiSearchLoading()) {
-                        <div class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
-                      } @else if (searchQuery().length > 0) {
-                        <button type="button" (click)="onSearchInput('')"
-                            class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 hover:text-gray-600 transition-colors">
-                          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
-                          </svg>
-                        </button>
-                      } @else {
-                        <svg class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                        </svg>
-                      }
-                    </div>
-                    @if (searchQuery().trim().length > 0 && searchQuery().trim().length < 3) {
-                      <p class="text-[10px] text-gray-400 mt-1.5 pl-0.5">Type 3+ characters to search…</p>
-                    }
-                  </div>
-
-                  <!-- ── Results body ── -->
-                  <div class="px-4 py-3">
-
-                    <!-- Loading skeleton -->
-                    @if (aiSearchLoading() && searchQuery().trim().length >= 3) {
-                      <div class="space-y-2.5">
-                        @for (i of [1,2,3]; track i) {
-                          <div class="flex gap-3 p-3 rounded-xl bg-gray-50 animate-pulse">
-                            <div class="w-8 h-8 rounded-lg bg-gray-200 shrink-0"></div>
-                            <div class="flex-1 space-y-1.5">
-                              <div class="h-3 bg-gray-200 rounded w-3/4"></div>
-                              <div class="h-2.5 bg-gray-200 rounded w-full"></div>
-                              <div class="h-2.5 bg-gray-200 rounded w-2/3"></div>
-                            </div>
-                          </div>
-                        }
-                      </div>
-                    }
-
-                    <!-- AI results -->
-                    @if (showAiResults()) {
-                      <div class="mb-2 flex items-center justify-between">
-                        <span class="text-[10px] font-black text-primary uppercase tracking-widest">
-                          {{ aiSearchResults().length }} matches found
-                        </span>
-                        <button type="button" (click)="onSearchInput('')"
-                            class="text-[10px] font-bold text-gray-400 hover:text-gray-600 transition-colors">
-                          Clear
-                        </button>
-                      </div>
-                      <div class="space-y-1.5">
-                        @for (result of aiSearchResults(); track result.postId; let i = $index) {
-                          <button type="button" (click)="openAiSearchResult(result)"
-                              class="w-full text-left p-3 rounded-xl border transition-all group flex items-start gap-3"
-                              [class]="i === 0 ? 'border-primary/30 bg-primary/5 hover:bg-primary/10' : 'border-gray-100 bg-white hover:border-primary/20 hover:bg-gray-50'">
-
-                            <!-- Rank -->
-                            <div class="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-black"
-                                 [class]="i === 0 ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500'">
-                              {{ i + 1 }}
-                            </div>
-
-                            <!-- Text -->
-                            <div class="flex-1 min-w-0">
-                              <p class="text-xs font-black text-dark leading-snug line-clamp-2 group-hover:text-primary transition-colors mb-1">
-                                {{ result.title }}
-                              </p>
-                              <p class="text-[10px] text-gray-400 line-clamp-2 leading-relaxed mb-1.5">{{ result.excerpt }}</p>
-                              <div class="flex items-center justify-between gap-2">
-                                @if (result.category) {
-                                  <span class="text-[9px] font-black text-primary/60 uppercase tracking-widest truncate">{{ result.category }}</span>
-                                }
-                                <!-- Score bar -->
-                                <div class="flex items-center gap-1.5 shrink-0">
-                                  <div class="w-10 h-1 bg-gray-100 rounded-full overflow-hidden">
-                                    <div class="h-full bg-primary rounded-full" [style.width.%]="recommendationScore(result)"></div>
-                                  </div>
-                                  <span class="text-[9px] font-black text-primary">{{ recommendationScore(result) }}%</span>
-                                </div>
-                              </div>
-                            </div>
-                          </button>
-                        }
-                      </div>
-                    }
-
-                    <!-- Post recommendations (when a post is open) -->
-                    @if (!showAiResults() && !aiSearchLoading()) {
-                      @if (recommendationsLoading() && latestRecommendations().length === 0) {
-                        <div class="space-y-2.5">
-                          @for (i of [1,2,3]; track i) {
-                            <div class="flex gap-3 p-3 rounded-xl bg-gray-50 animate-pulse">
-                              <div class="w-8 h-8 rounded-lg bg-gray-200 shrink-0"></div>
-                              <div class="flex-1 space-y-1.5">
-                                <div class="h-3 bg-gray-200 rounded w-3/4"></div>
-                                <div class="h-2.5 bg-gray-200 rounded w-full"></div>
-                              </div>
-                            </div>
-                          }
-                        </div>
-                      } @else if (latestRecommendations().length > 0) {
-                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Related to open post</p>
-                        <div class="space-y-1.5">
-                          @for (rec of latestRecommendations(); track rec.postId) {
-                            <button type="button" (click)="openRecommendedPost(rec)"
-                                class="w-full text-left p-3 rounded-xl border border-gray-100 bg-white hover:border-primary/20 hover:bg-gray-50 transition-all group flex items-start gap-3">
-                              <div class="shrink-0 w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
-                                <svg class="w-3.5 h-3.5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                                </svg>
-                              </div>
-                              <div class="flex-1 min-w-0">
-                                <p class="text-xs font-black text-dark line-clamp-2 group-hover:text-primary transition-colors mb-1">{{ rec.title }}</p>
-                                <div class="flex items-center justify-between gap-2">
-                                  @if (rec.category) {
-                                    <span class="text-[9px] font-black text-primary/60 uppercase tracking-widest truncate">{{ rec.category }}</span>
-                                  }
-                                  <div class="flex items-center gap-1.5 shrink-0">
-                                    <div class="w-10 h-1 bg-gray-100 rounded-full overflow-hidden">
-                                      <div class="h-full bg-primary rounded-full" [style.width.%]="recommendationScore(rec)"></div>
-                                    </div>
-                                    <span class="text-[9px] font-black text-primary">{{ recommendationScore(rec) }}%</span>
-                                  </div>
-                                </div>
-                              </div>
-                            </button>
-                          }
-                        </div>
-                      } @else {
-                        <!-- Empty state -->
-                        <div class="py-6 text-center">
-                          <div class="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center mx-auto mb-2">
-                            <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
-                            </svg>
-                          </div>
-                          <p class="text-xs font-bold text-gray-400">Describe your problem above</p>
-                          <p class="text-[10px] text-gray-300 mt-0.5">or open a post to see related discussions</p>
-                        </div>
-                      }
-                    }
-
-                  </div>
-                </div>
-                <!-- ── end AI section ── -->
-
-                <!-- ── Top 3 AI Recommended Posts ── -->
-                <div class="rounded-3xl border border-primary/20 bg-white shadow-lg overflow-hidden">
-                  <!-- Header -->
-                  <div class="px-5 pt-5 pb-4 bg-gradient-to-br from-primary/8 via-white to-white border-b border-primary/10">
-                    <div class="flex items-center gap-3">
-                      <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                        <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                        </svg>
-                      </div>
-                      <div>
-                        <p class="text-sm font-black text-dark uppercase tracking-wider leading-none">Top 3 Recommended</p>
-                        <p class="text-[10px] text-gray-400 font-semibold mt-0.5">AI-Powered · Trending Now</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Body -->
-                  <div class="px-4 py-3">
-                    @if (topRecommendedPosts().length > 0) {
-                      <div class="space-y-1.5">
-                        @for (post of topRecommendedPosts(); track post.id; let i = $index) {
-                          <button type="button" (click)="togglePostExpansion(post.id)"
-                              class="w-full text-left p-3 rounded-xl border transition-all group flex items-start gap-3"
-                              [class]="i === 0 ? 'border-primary/30 bg-primary/5 hover:bg-primary/10' : 'border-gray-100 bg-white hover:border-primary/20 hover:bg-gray-50'">
-
-                            <!-- Rank Badge -->
-                            <div class="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-black"
-                                 [class]="i === 0 ? 'bg-primary text-white' : i === 1 ? 'bg-primary/80 text-white' : 'bg-primary/60 text-white'">
-                              {{ i + 1 }}
-                            </div>
-
-                            <!-- Content -->
-                            <div class="flex-1 min-w-0">
-                              <p class="text-xs font-black text-dark leading-snug line-clamp-2 group-hover:text-primary transition-colors mb-1">
-                                {{ post.title }}
-                              </p>
-                              <p class="text-[10px] text-gray-400 line-clamp-2 leading-relaxed mb-1.5">{{ post.content }}</p>
-                              <div class="flex items-center justify-between gap-2">
-                                <span class="text-[9px] font-black text-primary/60 uppercase tracking-widest truncate">{{ post.category }}</span>
-                                <!-- Engagement metrics -->
-                                <div class="flex items-center gap-2 shrink-0">
-                                  <div class="flex items-center gap-1">
-                                    <svg class="w-3 h-3 text-primary" fill="currentColor" viewBox="0 0 24 24">
-                                      <path d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"/>
-                                    </svg>
-                                    <span class="text-[9px] font-black text-gray-500">{{ post.likes }}</span>
-                                  </div>
-                                  <div class="flex items-center gap-1">
-                                    <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
-                                    </svg>
-                                    <span class="text-[9px] font-black text-gray-500">{{ post.comments }}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </button>
-                        }
-                      </div>
-                    } @else {
-                      <!-- Empty state -->
-                      <div class="py-6 text-center">
-                        <div class="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center mx-auto mb-2">
-                          <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                              d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                          </svg>
-                        </div>
-                        <p class="text-xs font-bold text-gray-400">No recommendations yet</p>
-                        <p class="text-[10px] text-gray-300 mt-0.5">Check back soon for trending posts</p>
-                      </div>
-                    }
-                  </div>
-                </div>
-                <!-- ── end Top 3 AI Recommended Posts ── -->
-
-                <!-- Categories -->
-                <div class="floating-card p-6">
-                    <div class="flex items-center justify-between mb-8">
-                        <h3 class="font-black text-dark text-xl uppercase tracking-widest">Categories</h3>
-                        @if (isAdmin()) {
-                        <button type="button" (click)="openManageCategories()"
-                            class="text-[10px] font-black px-4 py-2 bg-primary/10 text-primary rounded-xl hover:bg-primary hover:text-white transition-all uppercase">
-                            + Add
-                        </button>
-                        }
-                    </div>
-                    <div class="space-y-3">
-                        <button (click)="selectCategory('all')"
-                            class="w-full flex items-center justify-between px-5 py-4 rounded-2xl transition-all text-left category-chip"
-                            [class.active]="activeCategory() === 'all'">
-                            <span class="font-black text-sm uppercase tracking-wide">All Posts</span>
-                            <span class="post-count">{{ posts().length }}</span>
-                        </button>
-                        @for (cat of categories(); track cat.id) {
-                        <button (click)="selectCategory(cat.slug)"
-                            class="w-full flex items-center justify-between px-5 py-4 rounded-2xl transition-all text-left category-chip"
-                            [class.active]="activeCategory() === cat.slug">
-                            <span class="flex items-center gap-4">
-                                <span class="text-2xl">{{ cat.icon }}</span>
-                                <span class="font-black text-sm uppercase tracking-wide">{{ cat.name }}</span>
-                            </span>
-                            <span class="post-count">{{ cat.postCount }}</span>
-                        </button>
-                        }
-                    </div>
-                </div>
-
-                <!-- ── end AI section — old separate card removed ── -->
-            </aside>
-
-            <!-- Main Content -->
-            <main class="flex-1">
-                <!-- Sort Options -->
-                <div class="flex items-center justify-between mb-10 px-4">
-                    <p class="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">{{ filteredPosts().length
-                        }} discussions active</p>
-                    <div class="flex items-center gap-2 p-2 bg-gray-100/50 rounded-2xl border border-gray-100">
-                        <button (click)="updateSort('recent')"
-                            class="px-6 py-2.5 text-xs font-black uppercase tracking-widest rounded-xl transition-all"
-                            [ngClass]="sortBy() === 'recent' ? 'bg-white text-primary shadow-md' : 'text-gray-500 hover:text-gray-700'">
-                            Recent
-                        </button>
-                        <button (click)="updateSort('popular')"
-                            class="px-6 py-2.5 text-xs font-black uppercase tracking-widest rounded-xl transition-all"
-                            [ngClass]="sortBy() === 'popular' ? 'bg-white text-primary shadow-md' : 'text-gray-500 hover:text-gray-700'">
-                            Popular
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Posts -->
-                <div class="space-y-10">
-                    @for (post of filteredPosts(); track post.id) {
-                    <div class="floating-card relative group" [class.border-l-8]="post.isPinned"
-                        [style.border-left-color]="post.isPinned ? 'var(--primary)' : 'transparent'">
-                        <div class="p-10">
-                            <!-- Header -->
-                            <div class="flex items-start justify-between mb-8">
-                                <div class="flex items-center gap-5">
-                                    <div class="avatar-container">
-                                        <div class="w-16 h-16 rounded-3xl flex items-center justify-center font-black text-2xl overflow-hidden border-4 border-white shadow-xl rotate-3 group-hover:rotate-0 transition-transform duration-500"
-                                            [ngClass]="post.author.avatar ? '' : 'bg-primary/5 text-primary'">
-                                            @if (post.author.avatar) {
-                                            <img [src]="post.author.avatar" class="w-full h-full object-cover">
-                                            } @else {
-                                            {{ getUserDisplayName(post.authorId).charAt(0) }}
-                                            }
-                                        </div>
-                                        <div class="avatar-ring"></div>
-                                    </div>
-                                    <div>
-                                        <div class="flex items-center gap-3">
-                                            <span class="font-black text-dark text-xl tracking-tight">{{
-                                                getUserDisplayName(post.authorId) }}</span>
-                                            @if (post.author.badge) {
-                                            <span class="badge-gold px-3 py-1 text-[10px] rounded-lg">
-                                                {{ post.author.badge }}
-                                            </span>
-                                            }
-                                        </div>
-                                        <div
-                                            class="flex items-center gap-3 text-[12px] font-black text-gray-400 mt-1 uppercase tracking-wide">
-                                            <span class="flex items-center gap-2">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2"
-                                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
-                                                {{ getTimeAgo(post.time) }}
-                                            </span>
-                                            <span class="opacity-20">|</span>
-                                            <span class="px-3 py-1 rounded-lg text-white font-black tracking-tighter"
-                                                [ngClass]="post.categoryColor" style="font-size: 9px;">
-                                                {{ post.category }}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="flex gap-2">
-                                    @if (post.moderationBadge) {
-                                    <span
-                                        class="px-4 py-2 text-[10px] font-black rounded-xl shadow-inner flex items-center gap-2 uppercase tracking-widest"
-                                        [ngClass]="{
-                                                    'bg-primary/10 text-primary': post.moderationBadge === 'PINNED',
-                                                    'bg-blue-50 text-blue-600': post.moderationBadge === 'OFFICIAL',
-                                                    'bg-orange-50 text-orange-600': post.moderationBadge === 'TRENDING'
-                                                }">
-                                        @if (post.moderationBadge === 'PINNED') { 📌 PINNED }
-                                        @else if (post.moderationBadge === 'OFFICIAL') { ✓ OFFICIAL }
-                                        @else if (post.moderationBadge === 'TRENDING') { 🔥 TRENDING }
-                                    </span>
-                                    }
-                                </div>
-                            </div>
-
-                            <!-- Content -->
-                            <h2 class="text-3xl font-black text-dark mb-4 hover:text-primary cursor-pointer transition-colors leading-[1.1] tracking-tight"
-                                (click)="togglePostExpansion(post.id)">
-                                {{ post.title }}
-                            </h2>
-                            <p class="text-gray-600 leading-relaxed mb-8 font-semibold text-[16px]"
-                                [class.line-clamp-3]="expandedPostId() !== post.id">
-                                {{ post.content }}
-                            </p>
-
-                            <!-- Tags -->
-                            <div class="flex flex-wrap gap-3 mb-10">
-                                @for (tag of post.tags; track tag) {
-                                <span
-                                    class="px-4 py-2 bg-gray-50 text-gray-500 text-[12px] font-black rounded-xl border border-gray-100 hover:border-primary/40 hover:text-primary transition-all cursor-pointer">
-                                    #{{ tag }}
-                                </span>
-                                }
-                            </div>
-
-                            <!-- Actions -->
-                            <div class="flex flex-wrap items-center gap-6 pt-8 border-t border-gray-100">
-                                <div class="flex items-center gap-3">
-                                    <button (click)="reactToPost(post.id, ReactionType.LIKE)"
-                                        class="flex items-center gap-2 px-5 py-3 rounded-2xl transition-all font-black text-sm uppercase"
-                                        [ngClass]="post.userReaction === 'LIKE' ? 'bg-primary/10 text-primary shadow-inner' : 'text-gray-400 hover:bg-gray-50'">
-                                        <svg class="w-6 h-6"
-                                            [attr.fill]="post.userReaction === 'LIKE' ? 'currentColor' : 'none'"
-                                            stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
-                                        </svg>
-                                        {{ post.likes }}
-                                    </button>
-
-                                    <button (click)="reactToPost(post.id, ReactionType.FLAME)" class="flame-container"
-                                        [ngClass]="{'active': post.userReaction === 'FLAME'}">
-                                        <span class="flame-icon">🔥</span>
-                                        <span class="font-black text-sm uppercase">{{ post.flames || 0 }}</span>
-                                    </button>
-                                </div>
-
-                                <div class="h-8 w-px bg-gray-100 hidden sm:block"></div>
-
-                                <button (click)="togglePostExpansion(post.id)"
-                                    class="flex items-center gap-3 px-6 py-3 rounded-2xl text-gray-500 hover:bg-gray-50 hover:text-dark transition-all font-black text-sm uppercase tracking-widest">
-                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                    </svg>
-                                    {{ post.comments }} Comments
-                                </button>
-
-                                <div class="flex-1"></div>
-
-                                <div class="flex items-center gap-3">
-                                    @if (!canManagePost(post)) {
-                                    <button (click)="openMessage(post.authorId)"
-                                        class="flex items-center gap-3 px-6 py-3 rounded-2xl bg-blue-600 text-white shadow-xl hover:bg-blue-700 transition-all font-black text-sm uppercase tracking-widest active:scale-95">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                                        </svg>
-                                        Message
-                                    </button>
-                                    }
-                                    @if (canManagePost(post)) {
-                                    <div
-                                        class="flex items-center gap-2 p-1.5 bg-gray-50 rounded-2xl border border-gray-100">
-                                        <button (click)="openUpdatePostModal(post)"
-                                            class="p-3 text-gray-400 hover:text-primary transition-all hover:bg-white rounded-xl shadow-sm">
-                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.586a2 2 0 010 2.828L12 13l-4 1 1-4 8.586-8.586a2 2 0 012.828 0z" />
-                                            </svg>
-                                        </button>
-                                        <button (click)="deletePost(post)"
-                                            class="p-3 text-gray-400 hover:text-red-600 transition-all hover:bg-white rounded-xl shadow-sm">
-                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3m9 0H6" />
-                                            </svg>
-                                        </button>
-                                    </div>
-                                    }
-                                </div>
-                            </div>
-
-                            <!-- Comment Section (Expanded) -->
-                            @if (expandedPostId() === post.id) {
-                            <div class="mt-10 pt-10 border-t border-gray-100">
-                                <form [formGroup]="commentForm" (ngSubmit)="submitComment(post.id)"
-                                    class="flex gap-4 mb-10">
-                                    <div class="flex-1 relative">
-                                        <input type="text" formControlName="content"
-                                            placeholder="Share your thoughts..." class="forum-input h-14 pl-6">
-                                    </div>
-                                    <button type="submit" [disabled]="commentForm.invalid"
-                                        class="px-8 py-3 bg-primary text-white font-black text-sm rounded-2xl hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 disabled:opacity-50 uppercase tracking-widest">
-                                        Post
-                                    </button>
-                                </form>
-
-                                @if (expandedPostCommentsLoading()) {
-                                <div class="flex flex-col items-center py-10">
-                                    <div
-                                        class="animate-spin rounded-full h-10 w-10 border-4 border-primary/20 border-t-primary">
-                                    </div>
-                                    <p class="mt-4 text-xs font-black text-gray-400 uppercase tracking-widest">Loading
-                                        Conversation...</p>
-                                </div>
-                                } @else {
-                                @if (expandedComments().length === 0) {
-                                <div
-                                    class="text-center py-10 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
-                                    <p class="text-sm font-black text-gray-400 uppercase tracking-widest">No comments
-                                        yet. Be the first to spark the fire!</p>
-                                </div>
-                                } @else {
-                                <div class="space-y-6">
-                                    @for (c of expandedComments(); track c.id) {
-                                    <div
-                                        class="bg-gray-50/50 border border-gray-100 rounded-[2rem] p-6 hover:bg-white hover:shadow-xl transition-all duration-300">
-                                        <div class="flex items-start justify-between gap-4">
-                                            <div class="flex-1">
-                                                <div class="flex items-center gap-3 mb-3">
-                                                    <span class="font-black text-dark text-sm">{{
-                                                        getUserDisplayName(c.authorId) }}</span>
-                                                    <span class="w-1 h-1 bg-gray-300 rounded-full"></span>
-                                                    <span
-                                                        class="text-[10px] font-black text-gray-400 uppercase tracking-wider">{{
-                                                        getTimeAgo(c.createdAt) }}</span>
-                                                </div>
-
-                                                @if (editingCommentId() === c.id) {
-                                                <form [formGroup]="editCommentForm" (ngSubmit)="submitEditComment(c)"
-                                                    class="mt-2 flex gap-3">
-                                                    <input type="text" formControlName="content"
-                                                        class="forum-input h-12">
-                                                    <button type="submit" [disabled]="editCommentForm.invalid"
-                                                        class="px-6 py-2 bg-primary text-white font-black text-xs rounded-xl hover:bg-primary-dark transition-all disabled:opacity-50">
-                                                        Save
-                                                    </button>
-                                                    <button type="button" (click)="cancelEditComment()"
-                                                        class="px-6 py-2 bg-white border border-gray-200 text-gray-700 font-black text-xs rounded-xl hover:bg-gray-50 transition-all">
-                                                        Cancel
-                                                    </button>
-                                                </form>
-                                                } @else {
-                                                <p class="text-[15px] text-gray-700 font-semibold leading-relaxed">
-                                                    {{ c.content }}
-                                                </p>
-                                                }
-                                            </div>
-                                            <div class="flex items-center gap-3">
-                                                <button type="button" (click)="startReply(c.id)"
-                                                    class="text-[10px] font-black text-primary uppercase tracking-widest hover:underline">
-                                                    Reply
-                                                </button>
-
-                                                @if (!canManageComment(c)) {
-                                                <button (click)="openMessage(c.authorId)"
-                                                    class="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-all"
-                                                    title="Message User">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                        viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2"
-                                                            d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                                                    </svg>
-                                                </button>
-                                                }
-
-                                                @if (canManageComment(c) && editingCommentId() !== c.id) {
-                                                <div class="flex items-center gap-1">
-                                                    <button type="button" (click)="updateComment(c)"
-                                                        class="p-2 text-gray-400 hover:text-primary transition-all rounded-lg hover:bg-white">
-                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                            viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                stroke-width="2"
-                                                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.586a2 2 0 010 2.828L12 13l-4 1 1-4 8.586-8.586a2 2 0 012.828 0z" />
-                                                        </svg>
-                                                    </button>
-                                                    <button type="button" (click)="deleteComment(c)"
-                                                        class="p-2 text-gray-400 hover:text-red-600 transition-all rounded-lg hover:bg-white">
-                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                            viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                stroke-width="2"
-                                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3m9 0H6" />
-                                                        </svg>
-                                                    </button>
-                                                </div>
-                                                }
-                                            </div>
-                                        </div>
-
-                                        @if (activeReplyingCommentId() === c.id) {
-                                        <form [formGroup]="replyForm" (ngSubmit)="submitReply()"
-                                            class="mt-6 flex gap-3 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm">
-                                            <input type="text" formControlName="content" placeholder="Write a reply..."
-                                                class="forum-input h-10 px-4 text-xs">
-                                            <button type="submit" [disabled]="replyForm.invalid"
-                                                class="px-6 py-2 bg-primary text-white font-black text-xs rounded-xl hover:bg-primary-dark transition-all disabled:opacity-50">
-                                                Reply
-                                            </button>
-                                        </form>
-                                        }
-
-                                        @if (c.replies.length > 0) {
-                                        <div class="mt-6 pl-8 border-l-2 border-gray-100 space-y-4">
-                                            @for (r of c.replies; track r.id) {
-                                            <div
-                                                class="bg-white/50 border border-gray-50 rounded-2xl p-4 hover:bg-white transition-all">
-                                                <div class="flex items-center gap-2 mb-2">
-                                                    <span class="text-[10px] font-black text-gray-600">{{
-                                                        getUserDisplayName(r.authorId) }}</span>
-                                                    <span
-                                                        class="text-[9px] font-black text-gray-400 uppercase tracking-tighter">{{
-                                                        getTimeAgo(r.createdAt) }}</span>
-                                                </div>
-                                                <p class="text-sm text-gray-700 font-semibold">
-                                                    {{ r.content }}
-                                                </p>
-
-                                                @if (canManageReply(r)) {
-                                                <div class="mt-3 flex items-center gap-4">
-                                                    <button type="button" (click)="updateReply(r, c.postId)"
-                                                        class="text-[9px] font-black text-gray-400 hover:text-primary uppercase tracking-widest">
-                                                        Edit
-                                                    </button>
-                                                    <button type="button" (click)="deleteReply(r, c.postId)"
-                                                        class="text-[9px] font-black text-gray-400 hover:text-red-600 uppercase tracking-widest">
-                                                        Delete
-                                                    </button>
-                                                </div>
-                                                }
-                                            </div>
-                                            }
-                                        </div>
-                                        }
-                                    </div>
-                                    }
-                                </div>
-                                }
-                                }
-                            </div>
-                            }
-                        </div>
-                    </div>
-
-                    <!-- 🤖 Inline AI Similar Discussions (shown when post is expanded) -->
-                    @if (expandedPostId() === post.id && latestRecommendations().length > 0) {
-                    <div class="mt-6 pt-6 border-t border-dashed border-primary/20">
-                        <div class="flex items-center gap-2 mb-4">
-                            <div class="p-1.5 bg-primary/10 rounded-lg">
-                                <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                                </svg>
-                            </div>
-                            <span class="text-xs font-black text-primary uppercase tracking-widest">AI Similar Discussions</span>
-                            <span class="text-[10px] text-gray-400 font-bold ml-auto">Semantic search · {{ latestRecommendations().length }} found</span>
-                        </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                            @for (rec of latestRecommendations(); track rec.postId) {
-                            <button type="button" (click)="openRecommendedPost(rec)"
-                                class="text-left p-4 rounded-2xl bg-primary/3 border border-primary/10 hover:border-primary/30 hover:bg-primary/5 hover:shadow-md transition-all group/inline">
-                                <div class="flex items-center justify-between gap-2 mb-2">
-                                    <span class="text-[9px] font-black text-primary uppercase tracking-widest truncate">
-                                        {{ rec.category || 'Forum' }}
-                                    </span>
-                                    <div class="flex items-center gap-1 flex-shrink-0">
-                                        <div class="w-8 h-1 bg-gray-100 rounded-full overflow-hidden">
-                                            <div class="h-full bg-primary rounded-full"
-                                                 [style.width.%]="recommendationScore(rec)"></div>
-                                        </div>
-                                        <span class="text-[9px] font-bold text-gray-400">{{ recommendationScore(rec) }}%</span>
-                                    </div>
-                                </div>
-                                <p class="text-xs font-black text-dark leading-snug line-clamp-2 group-hover/inline:text-primary transition-colors">{{ rec.title }}</p>
-                                <p class="text-[11px] text-gray-500 mt-1 line-clamp-1">{{ rec.excerpt }}</p>
-                            </button>
-                            }
-                        </div>
-                    </div>
-                    }
-                    } @empty {
-                    <div class="py-20 text-center premium-card-gold">
-                        <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                            </svg>
-                        </div>
-                        <h3 class="font-bold text-dark mb-2">No posts found</h3>
-                        <p class="text-gray-500 mb-4">Be the first to start a discussion!</p>
-                        <button (click)="openCreatePostModal()" class="btn-primary">Create Post</button>
-                    </div>
-                    }
-                </div>
-            </main>
-        </div>
+  <!-- ── Floating nav inside hero ── -->
+  <div class="f-hero-nav">
+    <div class="f-brand">
+      <div class="f-brand-icon">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <span class="f-brand-name">Esprit <strong>Hub</strong></span>
     </div>
-    <!-- Create Post Modal -->
-    @if (showCreatePostModal()) {
-    <div class="fixed inset-0 z-[100] flex items-center justify-center p-6" (click)="closeCreatePostModal()">
-        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"></div>
-        <div class="relative w-full max-w-2xl bg-white rounded-[40px] shadow-[0_50px_100px_rgba(0,0,0,0.4)] overflow-hidden animate-in zoom-in-95 duration-300"
-            (click)="$event.stopPropagation()">
-            <div class="bg-gradient-to-br from-[#800000] to-[#a52a2a] p-10 text-white relative">
-                <div class="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-24 -mt-24 blur-3xl"></div>
-                <div class="flex items-center justify-between relative z-10">
-                    <div>
-                        <h3 class="text-3xl font-black uppercase tracking-tighter">Spark a <span
-                                class="text-[#E0B84A]">Discussion</span></h3>
-                        <p class="text-white/60 text-xs font-black uppercase tracking-[0.2em] mt-2">Share your knowledge
-                            with the world</p>
-                    </div>
-                    <button (click)="closeCreatePostModal()"
-                        class="w-12 h-12 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-2xl transition-all">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
-                                d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
+  </div>
+
+  <!-- Hero Content -->
+  <div class="f-hero-content">
+    <h1 class="f-hero-title">Join the conversation</h1>
+    <p class="f-hero-subtitle">Share ideas. Ask questions. Build community.</p>
+
+    <!-- Action bar — same pill style as carpooling -->
+    <div class="f-hero-bar">
+      <!-- Search input -->
+      <div class="f-hero-field">
+        <span class="f-hero-field-icon">🔍</span>
+        <input
+          class="f-hero-input"
+          type="text"
+          placeholder="Search discussions…"
+          [value]="searchQuery()"
+          (input)="onSearchInput($any($event.target).value)">
+        @if (aiSearchLoading()) { <div class="f-hero-spin"></div> }
+      </div>
+
+      <!-- Category select -->
+      <div class="f-hero-divider"></div>
+      <div class="f-hero-field f-hero-field-select">
+        <span class="f-hero-field-icon">🏷️</span>
+        <select class="f-hero-select" (change)="selectCategory($any($event.target).value)">
+          <option value="all">All Topics</option>
+          @for (cat of categories(); track cat.id) {
+            <option [value]="cat.slug">{{ cat.name }}</option>
+          }
+        </select>
+      </div>
+
+      <!-- Sort select -->
+      <div class="f-hero-divider"></div>
+      <div class="f-hero-field f-hero-field-select">
+        <span class="f-hero-field-icon">📊</span>
+        <select class="f-hero-select" (change)="updateSort($any($event.target).value)">
+          <option value="recent">Recent</option>
+          <option value="popular">Popular</option>
+          <option value="comments">Most Discussed</option>
+        </select>
+      </div>
+
+      <!-- CTA button — gold like carpooling -->
+      <button class="f-hero-cta" (click)="openCreatePostModal()">
+        ✏️ New Post
+      </button>
+    </div>
+
+    <!-- Stats badge row -->
+    <div class="f-hero-badge">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <strong>{{ onlineUsers().length }}</strong> members online
+      <span class="f-hero-badge-sep">·</span>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <strong>{{ posts().length }}</strong> discussions
+      <span class="f-hero-badge-sep">·</span>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      <strong>{{ categories().length }}</strong> categories
+    </div>
+  </div>
+</div><!-- /f-hero-section -->
+
+<!-- ══ CONTENT WRAPPER ══════════════════════════════════════════════════════ -->
+<div class="f-wrap">
+
+<!-- ── 3-column layout ──────────────────────────────────────────────────────── -->
+<div class="f-layout">
+
+  <!-- ══ LEFT SIDEBAR ══════════════════════════════════════════════════════ -->
+  <aside class="f-sidebar-left">
+
+    <!-- Categories -->
+    <div class="f-panel">
+      <div class="f-panel-header">
+        <span class="f-panel-title">Categories</span>
+        @if (isAdmin()) {
+          <button class="f-panel-action" (click)="openManageCategories()">Manage</button>
+        }
+      </div>
+
+      <button class="f-cat-row" [class.f-cat-row-active]="activeCategory()==='all'" (click)="selectCategory('all')">
+        <span class="f-cat-dot" style="background:#800000"></span>
+        <span class="f-cat-name">All Discussions</span>
+        <span class="f-cat-count">{{ posts().length }}</span>
+      </button>
+
+      @for (cat of categories(); track cat.id) {
+        <button class="f-cat-row" [class.f-cat-row-active]="activeCategory()===cat.slug" (click)="selectCategory(cat.slug)">
+          <span class="f-cat-dot" [ngClass]="cat.color"></span>
+          <span class="f-cat-name">{{ cat.name }}</span>
+          <span class="f-cat-count">{{ cat.postCount }}</span>
+        </button>
+      }
+    </div>
+
+    <!-- People online -->
+    <div class="f-panel">
+      <div class="f-panel-header">
+        <span class="f-panel-title">People</span>
+        <span class="f-online-dot-label">
+          <span class="f-online-dot"></span>
+          {{ onlineUsers().length }} members
+        </span>
+      </div>
+
+      @if (onlineUsers().length === 0) {
+        <p class="f-empty-hint">Loading members…</p>
+      }
+
+      @for (u of onlineUsers(); track u.id) {
+        <div class="f-person-row">
+          <div class="f-person-avatar-wrap">
+            <div class="f-person-avatar">{{ u.name.charAt(0).toUpperCase() }}</div>
+            <span class="f-person-status" [class.f-person-online]="u.online" [class.f-person-offline]="!u.online"></span>
+          </div>
+          <span class="f-person-name">{{ u.name }}</span>
+          <button class="f-person-chat" (click)="openMessage(u.id)" title="Chat">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2C6.48 2 2 6.48 2 12C2 13.89 2.525 15.66 3.44 17.17L2.5 21.5L6.83 20.56C8.34 21.475 10.11 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2Z" stroke="currentColor" stroke-width="2.5" fill="none"/>
+              <circle cx="8" cy="11" r="1" fill="currentColor"/>
+              <circle cx="12" cy="11" r="1" fill="currentColor"/>
+              <circle cx="16" cy="11" r="1" fill="currentColor"/>
+            </svg>
+          </button>
+        </div>
+      }
+    </div>
+
+  </aside>
+
+  <!-- ══ CENTER FEED ════════════════════════════════════════════════════════ -->
+  <main class="f-feed">
+
+    <!-- Sort bar -->
+    <div class="f-sort-bar">
+      @for (s of [['recent','🕐 Recent'],['popular','🔥 Popular'],['comments','💬 Most Discussed']]; track s[0]) {
+        <button class="f-sort-btn" [class.f-sort-active]="sortBy()===s[0]" (click)="updateSort($any(s[0]))">
+          {{ s[1] }}
+        </button>
+      }
+      <span class="f-sort-count">{{ filteredPosts().length }} posts</span>
+    </div>
+
+    <!-- AI search results -->
+    @if (showAiResults()) {
+      <div class="f-ai-results">
+        <div class="f-ai-results-header">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9.663 17h4.673M12 3v1m6.364 1.636-.707.707M21 12h-1M4 12H3m3.343-5.657-.707-.707m2.828 9.9a5 5 0 1 1 7.072 0l-.548.547A3.374 3.374 0 0 0 14 18.469V19a2 2 0 1 1-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+          <span>{{ aiSearchResults().length }} AI results for "{{ searchQuery() }}"</span>
+          <button (click)="onSearchInput('')">✕</button>
+        </div>
+        @for (r of aiSearchResults(); track r.postId) {
+          <button class="f-ai-result-row" (click)="openAiSearchResult(r)">
+            <span class="f-ai-result-title">{{ r.title }}</span>
+            <span class="f-ai-result-cat">{{ r.category }}</span>
+          </button>
+        }
+      </div>
+    }
+
+    <!-- Loading skeletons -->
+    @if (forumService.isLoading()) {
+      @for (i of [1,2,3]; track i) {
+        <div class="f-card f-card-skeleton">
+          <div class="f-sk f-sk-avatar"></div>
+          <div class="f-sk-lines">
+            <div class="f-sk f-sk-title"></div>
+            <div class="f-sk f-sk-body"></div>
+            <div class="f-sk f-sk-body short"></div>
+          </div>
+        </div>
+      }
+    }
+
+    <!-- Empty state -->
+    @else if (filteredPosts().length === 0) {
+      <div class="f-empty">
+        <div class="f-empty-icon-wrap">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 0 1-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+        </div>
+        <p>No posts yet. Start the conversation!</p>
+        <button class="f-btn-primary" (click)="openCreatePostModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 5v14M5 12h14"/></svg>
+          Create Post
+        </button>
+      </div>
+    }
+
+    <!-- Posts feed -->
+    @else {
+      @for (post of filteredPosts(); track post.id) {
+        <article class="f-card" [class.f-card-pinned]="post.isPinned" [class.f-card-expanded]="expandedPostId()===post.id">
+
+          <!-- Pinned ribbon -->
+          @if (post.isPinned) {
+            <div class="f-pinned-ribbon">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>
+              Pinned
+            </div>
+          }
+
+          <!-- Card header -->
+          <div class="f-card-head">
+            <div class="f-author-avatar">{{ getUserDisplayName(post.authorId).charAt(0).toUpperCase() }}</div>
+            <div class="f-author-info">
+              <span class="f-author-name">{{ getUserDisplayName(post.authorId) }}</span>
+              <span class="f-author-meta">
+                {{ getTimeAgo(post.time) }}
+                <span class="f-meta-dot">·</span>
+                <span class="f-cat-pill" [ngClass]="post.categoryColor">{{ post.category }}</span>
+              </span>
+            </div>
+            @if (canManagePost(post)) {
+              <div class="f-card-actions">
+                <button class="f-icon-btn-sm" (click)="openUpdatePostModal(post)" title="Edit">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5m-1.414-9.586a2 2 0 0 1 2.828 2.828L12 13l-4 1 1-4 8.586-8.586z"/></svg>
+                </button>
+                <button class="f-icon-btn-sm f-icon-btn-danger" (click)="deletePost(post)" title="Delete">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 7l-.867 12.142A2 2 0 0 1 16.138 21H7.862a2 2 0 0 1-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v3M4 7h16"/></svg>
+                </button>
+              </div>
+            }
+          </div>
+
+          <!-- Post image -->
+          @if (post.imageUrl) {
+            <div class="f-card-img-wrap" (click)="togglePostExpansion(post.id)">
+              <img [src]="post.imageUrl" [alt]="post.title" class="f-card-img" loading="lazy">
+            </div>
+          }
+
+          <!-- Post body -->
+          <div class="f-card-body" (click)="togglePostExpansion(post.id)">
+            <h3 class="f-card-title">{{ post.title }}</h3>
+            <p class="f-card-excerpt" [class.f-card-excerpt-full]="expandedPostId()===post.id">{{ post.content }}</p>
+            @if (expandedPostId() !== post.id) {
+              <span class="f-read-more">Read more →</span>
+            }
+          </div>
+
+          <!-- Reactions + actions -->
+          <div class="f-card-footer">
+            <div class="f-reactions">
+              <!-- Like -->
+              <button class="f-react-btn" [class.f-react-active]="post.userReaction==='LIKE'"
+                      (click)="reactToPost(post.id, ReactionType.LIKE)">
+                <svg width="15" height="15" viewBox="0 0 24 24"
+                     [attr.fill]="post.userReaction==='LIKE'?'currentColor':'none'"
+                     stroke="currentColor" stroke-width="2">
+                  <path d="M14 10h4.764a2 2 0 0 1 1.789 2.894l-3.5 7A2 2 0 0 1 15.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 0 0-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2h2.5"/>
+                </svg>
+                <span class="f-react-count">{{ post.likes }}</span>
+              </button>
+
+              <!-- Flame -->
+              <button class="f-react-btn f-react-flame" [class.f-react-flame-active]="post.userReaction==='FLAME'"
+                      (click)="reactToPost(post.id, ReactionType.FLAME)">
+                <span class="f-flame-emoji">🔥</span>
+                <span class="f-react-count">{{ post.flames }}</span>
+              </button>
+
+              <!-- Comments toggle -->
+              <button class="f-react-btn f-react-comment" (click)="togglePostExpansion(post.id)">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 0 1-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                <span class="f-react-count">{{ post.comments }}</span>
+                <span class="f-react-label">{{ expandedPostId()===post.id ? 'Hide' : 'Comments' }}</span>
+              </button>
             </div>
 
-            <form [formGroup]="createPostForm" (ngSubmit)="createPost()"
-                class="p-10 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div>
-                        <label
-                            class="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Category</label>
-                        <select formControlName="categoryId" class="forum-input h-14 cursor-pointer">
-                            <option value="">Select Category</option>
-                            @for (cat of categories(); track cat.id) {
-                            <option [value]="cat.id">{{ cat.icon }} {{ cat.name }}</option>
+            @if (!canManagePost(post)) {
+              <button class="f-msg-btn" (click)="openMessage(post.authorId)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 2C6.48 2 2 6.48 2 12C2 13.89 2.525 15.66 3.44 17.17L2.5 21.5L6.83 20.56C8.34 21.475 10.11 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2Z" stroke="currentColor" stroke-width="2.5" fill="none"/>
+                  <circle cx="8" cy="11" r="1" fill="currentColor"/>
+                  <circle cx="12" cy="11" r="1" fill="currentColor"/>
+                  <circle cx="16" cy="11" r="1" fill="currentColor"/>
+                </svg>
+                Message
+              </button>
+            }
+          </div>
+
+          <!-- Expanded comments section -->
+          @if (expandedPostId() === post.id) {
+            <div class="f-comments">
+
+              <!-- Comment input -->
+              <form [formGroup]="commentForm" (ngSubmit)="submitComment(post.id)" class="f-comment-form">
+                <div class="f-comment-input-wrap">
+                  <input class="f-comment-input" type="text" formControlName="content" placeholder="Share your thoughts…">
+                  <button class="f-comment-submit" type="submit" [disabled]="commentForm.invalid">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  </button>
+                </div>
+              </form>
+
+              @if (expandedPostCommentsLoading()) {
+                <div class="f-comments-loading">
+                  <div class="f-spin"></div>
+                  <span class="f-loading-text">Loading comments…</span>
+                </div>
+              } @else if (expandedComments().length === 0) {
+                <div class="f-no-comments">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 0 1-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                  <span>No comments yet — be the first!</span>
+                </div>
+              } @else {
+                <div class="f-comments-list">
+                  @for (c of expandedComments(); track c.id) {
+                    <div class="f-comment">
+                      <div class="f-comment-avatar">{{ getUserDisplayName(c.authorId).charAt(0).toUpperCase() }}</div>
+                      <div class="f-comment-body">
+                        <div class="f-comment-head">
+                          <span class="f-comment-author">{{ getUserDisplayName(c.authorId) }}</span>
+                          <span class="f-comment-time">{{ getTimeAgo(c.createdAt) }}</span>
+                          <div class="f-comment-actions">
+                            @if (!canManageComment(c)) {
+                              <button class="f-icon-btn-sm" (click)="openMessage(c.authorId)" title="Chat">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M12 2C6.48 2 2 6.48 2 12C2 13.89 2.525 15.66 3.44 17.17L2.5 21.5L6.83 20.56C8.34 21.475 10.11 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2Z" stroke="currentColor" stroke-width="2.5" fill="none"/>
+                                  <circle cx="8" cy="11" r="0.8" fill="currentColor"/>
+                                  <circle cx="12" cy="11" r="0.8" fill="currentColor"/>
+                                  <circle cx="16" cy="11" r="0.8" fill="currentColor"/>
+                                </svg>
+                              </button>
                             }
-                        </select>
-                    </div>
-                    <div>
-                        <label
-                            class="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Tags</label>
-                        <input type="text" formControlName="tags" placeholder="e.g. Exam, Tips, 2ndYear"
-                            class="forum-input h-14">
-                    </div>
-                </div>
+                            <button class="f-icon-btn-sm f-reply-btn" (click)="startReply(c.id)">
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
+                              Reply
+                            </button>
+                            @if (canManageComment(c) && editingCommentId() !== c.id) {
+                              <button class="f-icon-btn-sm" (click)="updateComment(c)">Edit</button>
+                              <button class="f-icon-btn-sm f-icon-btn-danger" (click)="deleteComment(c)">Del</button>
+                            }
+                          </div>
+                        </div>
 
-                <div>
-                    <label class="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Discussion
-                        Title</label>
-                    <input type="text" formControlName="title" placeholder="What's on your mind?"
-                        class="forum-input h-14 text-lg">
-                </div>
-
-                <div>
-                    <label
-                        class="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Content</label>
-                    <textarea formControlName="content" rows="6" placeholder="Deep dive into your topic..."
-                        class="forum-input p-6 resize-none min-h-[200px]"></textarea>
-                </div>
-
-                <div class="flex gap-4 pt-6">
-                    <button type="button" (click)="closeCreatePostModal()"
-                        class="flex-1 px-8 py-4 border-2 border-gray-100 text-gray-400 font-black uppercase tracking-widest rounded-2xl hover:bg-gray-50 transition-all">
-                        Cancel
-                    </button>
-                    <button type="submit" [disabled]="isCreatingPost() || createPostForm.invalid"
-                        class="flex-1 btn-mesh py-4 text-sm shadow-xl disabled:opacity-30">
-                        @if (isCreatingPost()) {
-                        <div class="animate-spin h-5 w-5 border-2 border-white/30 border-t-white rounded-full"></div>
+                        @if (editingCommentId() === c.id) {
+                          <form [formGroup]="editCommentForm" (ngSubmit)="submitEditComment(c)" class="f-edit-form">
+                            <input class="f-comment-input" type="text" formControlName="content">
+                            <button class="f-btn-primary f-btn-sm" type="submit">Save</button>
+                            <button class="f-btn-ghost f-btn-sm" type="button" (click)="cancelEditComment()">Cancel</button>
+                          </form>
                         } @else {
-                        Launch Discussion
+                          <p class="f-comment-text">{{ c.content }}</p>
                         }
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-    }
 
-    <!-- Update Post Modal -->
-    @if (showUpdatePostModal()) {
-    <div class="fixed inset-0 z-[100] flex items-center justify-center p-6" (click)="closeUpdatePostModal()">
-        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"></div>
-        <div class="relative w-full max-w-2xl bg-white rounded-[40px] shadow-[0_50px_100px_rgba(0,0,0,0.4)] overflow-hidden animate-in zoom-in-95 duration-300"
-            (click)="$event.stopPropagation()">
-            <div class="bg-gradient-to-br from-[#800000] to-[#a52a2a] p-10 text-white relative">
-                <div class="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-24 -mt-24 blur-3xl"></div>
-                <div class="flex items-center justify-between relative z-10">
-                    <div>
-                        <h3 class="text-3xl font-black uppercase tracking-tighter">Edit <span
-                                class="text-[#E0B84A]">Discussion</span></h3>
-                        <p class="text-white/60 text-xs font-black uppercase tracking-[0.2em] mt-2">Refine your message
-                        </p>
-                    </div>
-                    <button (click)="closeUpdatePostModal()"
-                        class="w-12 h-12 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-2xl transition-all">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
-                                d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-
-            <form [formGroup]="updatePostForm" (ngSubmit)="submitUpdatePost()"
-                class="p-10 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
-                <div>
-                    <label
-                        class="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Category</label>
-                    <select formControlName="categoryId" class="forum-input h-14" [disabled]="!isAdmin()">
-                        @for (cat of categories(); track cat.id) {
-                        <option [value]="cat.id">{{ cat.icon }} {{ cat.name }}</option>
-                        }
-                    </select>
-                </div>
-
-                <div>
-                    <label class="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Discussion
-                        Title</label>
-                    <input type="text" formControlName="title" class="forum-input h-14 text-lg">
-                </div>
-
-                <div>
-                    <label
-                        class="block text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Content</label>
-                    <textarea formControlName="content" rows="8"
-                        class="forum-input p-6 resize-none min-h-[250px]"></textarea>
-                </div>
-
-                @if (isAdmin()) {
-                <div class="grid grid-cols-2 gap-4">
-                    <label
-                        class="flex items-center justify-center gap-3 p-5 bg-gray-50 rounded-2xl border-2 border-transparent cursor-pointer hover:border-primary/20 transition-all">
-                        <input type="checkbox" formControlName="pinned" class="w-5 h-5 accent-primary" />
-                        <span class="text-[10px] font-black uppercase tracking-widest">Pinned</span>
-                    </label>
-                    <label
-                        class="flex items-center justify-center gap-3 p-5 bg-gray-50 rounded-2xl border-2 border-transparent cursor-pointer hover:border-primary/20 transition-all">
-                        <input type="checkbox" formControlName="approved" class="w-5 h-5 accent-primary" />
-                        <span class="text-[10px] font-black uppercase tracking-widest">Approved</span>
-                    </label>
-                </div>
-                }
-
-                <div class="flex gap-4 pt-6">
-                    <button type="button" (click)="closeUpdatePostModal()"
-                        class="flex-1 px-8 py-4 border-2 border-gray-100 text-gray-400 font-black uppercase tracking-widest rounded-2xl hover:bg-gray-50 transition-all">
-                        Cancel
-                    </button>
-                    <button type="submit" [disabled]="updatePostForm.invalid"
-                        class="flex-1 btn-mesh py-4 text-sm shadow-xl">
-                        Sync Changes
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-    }
-
-    <!-- Manage Categories Modal (Admin) -->
-    @if (showManageCategoriesModal()) {
-    <div class="fixed inset-0 z-[100] flex items-center justify-center p-6" (click)="closeManageCategories()">
-        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"></div>
-        <div class="relative w-full max-w-4xl bg-white rounded-[40px] shadow-[0_50px_100px_rgba(0,0,0,0.4)] overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col"
-            (click)="$event.stopPropagation()">
-            <div class="bg-gradient-to-br from-[#800000] to-[#a52a2a] p-8 text-white">
-                <div class="flex items-center justify-between">
-                    <h3 class="text-2xl font-black uppercase tracking-tighter">Category <span
-                            class="text-[#E0B84A]">Management</span></h3>
-                    <button (click)="closeManageCategories()"
-                        class="w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-xl transition-all">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
-                                d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-
-            <div class="p-10 grid grid-cols-1 lg:grid-cols-5 gap-10 overflow-y-auto max-h-[80vh] custom-scrollbar">
-                <!-- Form Side -->
-                <div class="lg:col-span-2 space-y-6">
-                    <div class="floating-card p-8 border-primary/10">
-                        <h4 class="text-xs font-black text-dark uppercase tracking-widest mb-6">
-                            {{ editingCategoryId() ? 'Edit Existing' : 'New Category' }}
-                        </h4>
-
-                        <form [formGroup]="categoryForm" (ngSubmit)="submitCategory()" class="space-y-6">
-                            <div>
-                                <label
-                                    class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Name</label>
-                                <input type="text" formControlName="name" class="forum-input h-12" />
-                            </div>
-
-                            <div>
-                                <label
-                                    class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Description</label>
-                                <textarea rows="4" formControlName="description"
-                                    class="forum-input p-4 resize-none"></textarea>
-                            </div>
-
-                            <div class="flex gap-3 pt-2">
-                                <button type="submit" class="flex-1 btn-mesh py-3 text-[10px] shadow-lg"
-                                    [disabled]="isSavingCategory()">
-                                    {{ editingCategoryId() ? 'Update' : 'Create' }}
-                                </button>
-                                <button type="button" (click)="closeManageCategories()"
-                                    class="px-6 py-3 border border-gray-100 text-gray-400 font-black text-[10px] uppercase rounded-xl hover:bg-gray-50 transition-all">
-                                    Close
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- List Side -->
-                <div class="lg:col-span-3 space-y-4">
-                    <h4 class="text-xs font-black text-gray-400 uppercase tracking-widest">Active Categories</h4>
-
-                    <div class="space-y-3">
-                        @for (c of categories(); track c.id) {
-                        <div
-                            class="p-6 bg-gray-50 border border-gray-100 rounded-[28px] hover:bg-white hover:shadow-xl transition-all group">
-                            <div class="flex items-start justify-between gap-4">
-                                <div class="min-w-0">
-                                    <p class="text-lg font-black text-dark tracking-tight">{{ c.name }}</p>
-                                    <p class="text-sm text-gray-500 font-semibold mt-1 line-clamp-2">{{ c.description }}
-                                    </p>
+                        <!-- Replies -->
+                        @if (c.replies.length > 0) {
+                          <div class="f-replies-thread">
+                            @for (r of c.replies; track r.id) {
+                              <div class="f-reply">
+                                <div class="f-reply-avatar">{{ getUserDisplayName(r.authorId).charAt(0).toUpperCase() }}</div>
+                                <div class="f-reply-body">
+                                  <div class="f-reply-head">
+                                    <span class="f-comment-author">{{ getUserDisplayName(r.authorId) }}</span>
+                                    <span class="f-comment-time">{{ getTimeAgo(r.createdAt) }}</span>
+                                  </div>
+                                  <p class="f-comment-text">{{ r.content }}</p>
                                 </div>
-                                <div class="flex flex-col gap-2">
-                                    <button (click)="openEditCategory(c)"
-                                        class="p-2 text-primary hover:bg-primary/5 rounded-lg transition-all">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.586a2 2 0 010 2.828L12 13l-4 1 1-4 8.586-8.586a2 2 0 012.828 0z" />
-                                        </svg>
-                                    </button>
-                                    <button (click)="deleteCategory(c)"
-                                        class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3m9 0H6" />
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                                @if (canManageReply(r)) {
+                                  <button class="f-icon-btn-sm f-icon-btn-danger" (click)="deleteReply(r, post.id)">✕</button>
+                                }
+                              </div>
+                            }
+                          </div>
                         }
+
+                        <!-- Reply form -->
+                        @if (activeReplyingCommentId() === c.id) {
+                          <form [formGroup]="replyForm" (ngSubmit)="submitReply()" class="f-reply-form">
+                            <div class="f-reply-input-wrap">
+                              <input class="f-comment-input" type="text" formControlName="content" placeholder="Write a reply…" autofocus>
+                              <button class="f-comment-submit" type="submit" [disabled]="replyForm.invalid">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                              </button>
+                            </div>
+                            <button class="f-btn-ghost f-btn-sm" type="button" (click)="activeReplyingCommentId.set(null)">Cancel</button>
+                          </form>
+                        }
+                      </div>
                     </div>
+                  }
                 </div>
+              }
             </div>
-        </div>
-    </div>
+          }
+
+        </article>
+      }
     }
 
-    <app-forum-chat-widget></app-forum-chat-widget>
-</div>
+  </main>
+
+  <!-- ══ RIGHT SIDEBAR ══════════════════════════════════════════════════════ -->
+  <aside class="f-sidebar-right">
+
+    <!-- AI Picks -->
+    <div class="f-panel">
+      <div class="f-panel-header">
+        <div class="f-panel-title-row">
+          <div class="f-ai-icon">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          </div>
+          <span class="f-panel-title">AI Picks</span>
+        </div>
+      </div>
+      @if (topRecommendedPosts().length === 0) {
+        <p class="f-empty-hint">Interact with posts to get recommendations.</p>
+      }
+      @for (rec of topRecommendedPosts(); track rec.id; let i = $index) {
+        <button class="f-rec-row" (click)="togglePostExpansion(rec.id)">
+          <span class="f-rec-rank" [class.f-rec-rank-1]="i===0" [class.f-rec-rank-2]="i===1">{{ i+1 }}</span>
+          <div class="f-rec-info">
+            <span class="f-rec-title">{{ rec.title }}</span>
+            <span class="f-rec-meta">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M14 10h4.764a2 2 0 0 1 1.789 2.894l-3.5 7A2 2 0 0 1 15.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 0 0-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2h2.5"/></svg>
+              {{ rec.likes + rec.loves }} · 💬 {{ rec.comments }}
+            </span>
+          </div>
+        </button>
+      }
+    </div>
+
+    <!-- Trending categories -->
+    <div class="f-panel">
+      <div class="f-panel-header">
+        <span class="f-panel-title">🔥 Trending</span>
+      </div>
+      @for (cat of categories().slice(0,5); track cat.id) {
+        <button class="f-trend-row" (click)="selectCategory(cat.slug)">
+          <span class="f-trend-dot" [ngClass]="cat.color"></span>
+          <span class="f-trend-name">{{ cat.name }}</span>
+          <span class="f-trend-bar-wrap">
+            <span class="f-trend-bar" [style.width.%]="(cat.postCount / (categories()[0]?.postCount || 1)) * 100"></span>
+          </span>
+          <span class="f-trend-count">{{ cat.postCount }}</span>
+        </button>
+      }
+    </div>
+
+  </aside>
+
+</div><!-- /f-layout -->
+
+</div><!-- /f-wrap -->
+
+<!-- ══ CHAT WIDGET ══════════════════════════════════════════════════════════ -->
+<app-forum-chat-widget />
+
+<!-- ══ CREATE POST MODAL ════════════════════════════════════════════════════ -->
+@if (showCreatePostModal()) {
+  <div class="f-modal-backdrop" (click)="closeCreatePostModal()">
+    <div class="f-modal" (click)="$event.stopPropagation()">
+      <div class="f-modal-header">
+        <h2 class="f-modal-title">New Discussion</h2>
+        <button class="f-modal-close" (click)="closeCreatePostModal()">✕</button>
+      </div>
+      <form [formGroup]="createPostForm" (ngSubmit)="createPost()" class="f-modal-body">
+        <div class="f-field">
+          <label class="f-label">Category <span class="f-required">*</span></label>
+          <select formControlName="categoryId" class="f-select">
+            <option value="" disabled>Select a category</option>
+            @for (cat of categories(); track cat.id) {
+              <option [value]="cat.id">{{ cat.name }}</option>
+            }
+          </select>
+        </div>
+        <div class="f-field">
+          <label class="f-label">Title <span class="f-required">*</span></label>
+          <input formControlName="title" type="text" class="f-input" placeholder="What's on your mind?">
+        </div>
+        <div class="f-field">
+          <label class="f-label">Content <span class="f-required">*</span></label>
+          <textarea formControlName="content" class="f-textarea" rows="5" placeholder="Share your thoughts, questions or resources…"></textarea>
+        </div>
+        <div class="f-field">
+          <label class="f-label">Photo (optional)</label>
+          @if (!imagePreviewUrl()) {
+            <label class="f-upload-zone" for="forum-img-upload">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+              <span>Click to upload image</span>
+              <span class="f-upload-hint">JPG, PNG, WEBP, GIF · max 8 MB</span>
+              <input id="forum-img-upload" type="file" accept="image/*" class="f-upload-hidden" (change)="onPostImageSelected($event)">
+            </label>
+          } @else {
+            <div class="f-img-preview-wrap">
+              <img [src]="imagePreviewUrl()!" class="f-img-preview" alt="Preview">
+              <button type="button" class="f-img-remove" (click)="removePostImage()">✕ Remove</button>
+            </div>
+          }
+        </div>
+        <div class="f-field">
+          <label class="f-label">Tags</label>
+          <input formControlName="tags" type="text" class="f-input" placeholder="tag1, tag2, tag3">
+        </div>
+        <div class="f-modal-footer">
+          <button type="button" class="f-btn-ghost" (click)="closeCreatePostModal()">Cancel</button>
+          <button type="submit" class="f-btn-primary" [disabled]="createPostForm.invalid || isCreatingPost()">
+            @if (isCreatingPost()) { Publishing… } @else { Publish Post }
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+<!-- ══ EDIT POST MODAL ══════════════════════════════════════════════════════ -->
+@if (showUpdatePostModal()) {
+  <div class="f-modal-backdrop" (click)="closeUpdatePostModal()">
+    <div class="f-modal" (click)="$event.stopPropagation()">
+      <div class="f-modal-header">
+        <h2 class="f-modal-title">Edit Post</h2>
+        <button class="f-modal-close" (click)="closeUpdatePostModal()">✕</button>
+      </div>
+      <form [formGroup]="updatePostForm" (ngSubmit)="submitUpdatePost()" class="f-modal-body">
+        <div class="f-field">
+          <label class="f-label">Category</label>
+          <select formControlName="categoryId" class="f-select">
+            @for (cat of categories(); track cat.id) {
+              <option [value]="cat.id">{{ cat.name }}</option>
+            }
+          </select>
+        </div>
+        <div class="f-field">
+          <label class="f-label">Title</label>
+          <input formControlName="title" type="text" class="f-input">
+        </div>
+        <div class="f-field">
+          <label class="f-label">Content</label>
+          <textarea formControlName="content" class="f-textarea" rows="5"></textarea>
+        </div>
+        @if (isAdmin()) {
+          <div class="f-field f-field-row">
+            <label class="f-check-label"><input type="checkbox" formControlName="pinned"> Pin post</label>
+            <label class="f-check-label"><input type="checkbox" formControlName="approved"> Approved</label>
+          </div>
+        }
+        <div class="f-modal-footer">
+          <button type="button" class="f-btn-ghost" (click)="closeUpdatePostModal()">Cancel</button>
+          <button type="submit" class="f-btn-primary" [disabled]="updatePostForm.invalid">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+<!-- ══ MANAGE CATEGORIES MODAL ══════════════════════════════════════════════ -->
+@if (showManageCategoriesModal()) {
+  <div class="f-modal-backdrop" (click)="closeManageCategories()">
+    <div class="f-modal" (click)="$event.stopPropagation()">
+      <div class="f-modal-header">
+        <h2 class="f-modal-title">{{ editingCategoryId() ? 'Edit Category' : 'New Category' }}</h2>
+        <button class="f-modal-close" (click)="closeManageCategories()">✕</button>
+      </div>
+      <form [formGroup]="categoryForm" (ngSubmit)="submitCategory()" class="f-modal-body">
+        <div class="f-field">
+          <label class="f-label">Name</label>
+          <input formControlName="name" type="text" class="f-input" placeholder="Category name">
+        </div>
+        <div class="f-field">
+          <label class="f-label">Description</label>
+          <textarea formControlName="description" class="f-textarea" rows="3" placeholder="Short description"></textarea>
+        </div>
+        <div class="f-modal-footer">
+          @for (cat of categories(); track cat.id) {
+            <button type="button" class="f-btn-danger-sm" (click)="deleteCategory(cat)">Delete {{ cat.name }}</button>
+          }
+          <span class="f-spacer"></span>
+          <button type="button" class="f-btn-ghost" (click)="closeManageCategories()">Cancel</button>
+          <button type="submit" class="f-btn-primary" [disabled]="categoryForm.invalid || isSavingCategory()">
+            {{ isSavingCategory() ? 'Saving…' : (editingCategoryId() ? 'Update' : 'Create') }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+</div><!-- /f-page -->

@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/cart-items")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('CLIENT')")
+@PreAuthorize("isAuthenticated()")
 public class CartItemController {
 
     private final ICartItemService cartItemService;

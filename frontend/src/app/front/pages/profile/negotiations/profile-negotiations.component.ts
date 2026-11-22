@@ -129,6 +129,31 @@ import { catchError, of } from 'rxjs';
                 </span>
               </div>
 
+              <!-- AI Acceptance Probability badge -->
+              @if (neg.aiAcceptanceProbability != null) {
+                <div class="mb-3 rounded-xl overflow-hidden border"
+                     [style.border-color]="neg.aiAcceptanceProbability >= 0.7 ? '#bbf7d0' : neg.aiAcceptanceProbability >= 0.45 ? '#fde68a' : '#fecaca'">
+                  <!-- Bar -->
+                  <div class="h-1.5 w-full bg-gray-100">
+                    <div class="h-full transition-all duration-700 rounded-full"
+                         [style.width.%]="neg.aiAcceptanceProbability * 100"
+                         [style.background-color]="neg.aiAcceptanceProbability >= 0.7 ? '#22c55e' : neg.aiAcceptanceProbability >= 0.45 ? '#f59e0b' : '#ef4444'">
+                    </div>
+                  </div>
+                  <div class="px-3 py-2 flex items-center justify-between gap-2"
+                       [style.background-color]="neg.aiAcceptanceProbability >= 0.7 ? '#f0fdf4' : neg.aiAcceptanceProbability >= 0.45 ? '#fffbeb' : '#fef2f2'">
+                    <span class="text-[10px] font-black uppercase tracking-widest"
+                          [style.color]="neg.aiAcceptanceProbability >= 0.7 ? '#15803d' : neg.aiAcceptanceProbability >= 0.45 ? '#b45309' : '#b91c1c'">
+                      🤖 AI Acceptance Chance
+                    </span>
+                    <span class="text-sm font-black"
+                          [style.color]="neg.aiAcceptanceProbability >= 0.7 ? '#15803d' : neg.aiAcceptanceProbability >= 0.45 ? '#b45309' : '#b91c1c'">
+                      {{ (neg.aiAcceptanceProbability * 100) | number:'1.0-0' }}%
+                    </span>
+                  </div>
+                </div>
+              }
+
               <!-- Latest proposal summary -->
               @if (neg.proposals && neg.proposals.length > 0) {
                 <div class="mb-4 p-3 rounded-xl text-sm" style="background-color:var(--subtle)">

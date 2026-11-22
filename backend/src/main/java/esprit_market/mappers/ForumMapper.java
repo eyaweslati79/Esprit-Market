@@ -92,6 +92,7 @@ public final class ForumMapper {
                 .approved(e.isApproved())
                 .commentIds(toIdList(e.getCommentIds()))
                 .reactionIds(toIdList(e.getReactionIds()))
+                .imageUrl(e.getImageUrl())
                 .build();
     }
 
@@ -106,6 +107,7 @@ public final class ForumMapper {
                 .isApproved(false)
                 .commentIds(Collections.emptyList())
                 .reactionIds(Collections.emptyList())
+                .imageUrl(dto.getImageUrl())
                 .build();
     }
 

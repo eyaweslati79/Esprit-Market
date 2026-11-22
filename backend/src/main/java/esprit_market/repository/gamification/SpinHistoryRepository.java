@@ -7,38 +7,25 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface SpinHistoryRepository extends MongoRepository<SpinHistory, ObjectId> {
-    
-    /**
-     * Check if user has spun today
-     */
-    Optional<SpinHistory> findByUserIdAndSpinDate(ObjectId userId, LocalDate spinDate);
-    
-    /**
-     * Get user's spin history
-     */
+
+    /** Check if user has spun on a given date (stored as "yyyy-MM-dd" string) */
+    Optional<SpinHistory> findByUserIdAndSpinDate(ObjectId userId, String spinDate);
+
+    /** Paginated history for a user */
     Page<SpinHistory> findByUserIdOrderBySpinTimestampDesc(ObjectId userId, Pageable pageable);
-    
-    /**
-     * Get all spins by user
-     */
+
+    /** All spins by a user */
     List<SpinHistory> findByUserId(ObjectId userId);
-    
-    /**
-     * Count total spins
-     */
-    long countBySpinDate(LocalDate spinDate);
-    
-    /**
-     * Get unclaimed rewards for a user
-     */
-    List<SpinHistory> findByUserIdAndClaimedFalseAndExpiryDateAfter(
-        ObjectId userId, 
-        java.time.LocalDateTime now
-    );
+
+    /** Count spins on a given date */
+    long countBySpinDate(String spinDate);
+
+    /** Unclaimed, non-expired rewards */
+    List<SpinHistory> findByUserIdAndClaimedFalseAndExpiryDateAfter(ObjectId userId, LocalDateTime now);
 }

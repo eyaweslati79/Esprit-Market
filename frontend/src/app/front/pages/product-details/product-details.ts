@@ -215,11 +215,14 @@ export class ProductDetails implements OnInit, OnDestroy {
         // Track view interaction for ML recommendations (fire-and-forget)
         this.trackInteraction(product.id, 'view');
         
-        // Load ML insight for this product (non-blocking)
-        this.mlService.getProductInsight(product.id).subscribe({
-          next: insight => this.mlInsight.set(insight),
-          error: () => {}
-        });
+        // Load ML insight for this product — only for admins and the product's own provider
+        const role = this.authService.userRole();
+        if (role === 'ADMIN' || role === 'PROVIDER' || role === 'SELLER') {
+          this.mlService.getProductInsight(product.id).subscribe({
+            next: insight => this.mlInsight.set(insight),
+            error: () => {}
+          });
+        }
         
         // Set images
         const productImages = product.images && product.images.length > 0 

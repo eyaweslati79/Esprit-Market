@@ -20,6 +20,7 @@ public class PostService implements IPostService {
     private final PostRepository repository;
     private final CommentRepository commentRepository;
     private final ReactionRepository reactionRepository;
+    private final ForumRecommendationService recommendationService;
 
     @Override
     public List<Post> findAll() {
@@ -35,9 +36,11 @@ public class PostService implements IPostService {
     public Post create(PostRequest dto) {
         Post entity = ForumMapper.toPost(dto);
         if (entity == null) return null;
-        // Filter bad words before persisting
         entity.setContent(BadWordFilter.filter(entity.getContent()));
-        return repository.save(entity);
+        Post saved = repository.save(entity);
+        // Fire-and-forget: ingest into FAISS index
+        recommendationService.ingestPost(saved);
+        return saved;
     }
 
     @Override

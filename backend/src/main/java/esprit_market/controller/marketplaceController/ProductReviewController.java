@@ -51,4 +51,13 @@ public class ProductReviewController {
         List<ProductReviewDTO> reviews = reviewService.getSellerReviews(sellerId);
         return ResponseEntity.ok(reviews);
     }
+
+    /**
+     * Check if current user can review a product (has a purchased order item not yet reviewed)
+     */
+    @GetMapping("/products/{productId}/can-review")
+    @Operation(summary = "Check if user can review", description = "Returns reviewable order items for the current user")
+    public ResponseEntity<?> canReview(@PathVariable String productId) {
+        return ResponseEntity.ok(reviewService.getReviewableOrderItems(productId));
+    }
 }

@@ -1,243 +1,229 @@
-<div
-    class="product-card premium-card overflow-hidden group"
-    [class.featured-accent]="isFeatured()"
-    [class.opacity-75]="isOutOfStock()">
-    
-    <!-- Image Section -->
-    <div class="relative aspect-[4/5] bg-bg-subtle overflow-hidden">
-        <a [routerLink]="['/product', product().id]">
-            <img [src]="product().imageUrl" [alt]="product().name"
-                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                [class.grayscale]="isOutOfStock()"
-                [attr.loading]="isFeatured() ? 'eager' : 'lazy'"
-                [attr.fetchpriority]="isFeatured() ? 'high' : 'auto'">
-        </a>
-        
-        <!-- Out of Stock Overlay -->
-        @if (isOutOfStock()) {
-            <div class="absolute inset-0 bg-slate-900/40 flex items-center justify-center pointer-events-none">
-                <div class="bg-surface/95 backdrop-blur-sm px-6 py-3 rounded-xl shadow-2xl transform -rotate-12 border border-surface-border">
-                    <p class="text-primary font-black text-lg uppercase tracking-wider">Out of Stock</p>
-                </div>
-            </div>
+<div class="pc group" [class.opacity-60]="isOutOfStock()">
+
+  <!-- ── Image ── -->
+  <div class="pc-img-wrap">
+    <img [src]="product().imageUrl" [alt]="product().name"
+         class="pc-img group-hover:scale-105"
+         [class.grayscale]="isOutOfStock()"
+         [attr.loading]="isFeatured() ? 'eager' : 'lazy'">
+
+    <!-- Badges top-left -->
+    <div class="absolute top-2 left-2 flex flex-col gap-1 z-10">
+      @if (product().flashSaleLive) {
+        <span class="flash-sale-badge">⚡ FLASH</span>
+      } @else if (product().originalPrice && product().originalPrice! > product().price) {
+        <span class="pc-badge pc-badge-sale">SALE</span>
+      }
+    </div>
+
+    <!-- Flash countdown top-right -->
+    @if (product().flashSaleLive && product().flashSaleEndTime) {
+      <div class="absolute top-2 right-2 z-10">
+        <div class="flash-countdown">
+          <span class="flash-countdown-label">Ends in</span>
+          <span class="flash-countdown-time">{{ getFlashCountdown() }}</span>
+        </div>
+      </div>
+    } @else {
+      <!-- Favorite top-right -->
+      <button (click)="toggleFavorite($event)"
+              [disabled]="isTogglingFavorite()"
+              class="pc-fav-btn"
+              [class.pc-fav-active]="isFavorited()"
+              aria-label="Toggle favourite">
+        <svg class="w-4 h-4" [attr.fill]="isFavorited() ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+        </svg>
+      </button>
+    }
+
+    <!-- Hover action overlay -->
+    <div class="pc-overlay">
+      <!-- Quick View -->
+      <button (click)="openQuickView()" class="pc-action-btn pc-action-qv">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+        </svg>
+        Quick View
+      </button>
+      <!-- View Details -->
+      <a [routerLink]="['/product', product().id]" class="pc-action-btn pc-action-det">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7-7 7"/>
+        </svg>
+        View Details
+      </a>
+    </div>
+
+    <!-- Out of stock overlay -->
+    @if (isOutOfStock()) {
+      <div class="absolute inset-0 bg-black/30 flex items-center justify-center pointer-events-none">
+        <span class="bg-white/90 text-gray-700 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest -rotate-12">Out of Stock</span>
+      </div>
+    }
+  </div>
+
+  <!-- ── Info ── -->
+  <div class="pc-info">
+    <p class="pc-category">{{ product().category }}</p>
+    <h3 class="pc-name">{{ product().name }}</h3>
+
+    <!-- Stars + reviews — Shein style: only show if there are reviews -->
+    @if (product().reviewsCount > 0) {
+      <div class="flex items-center gap-1 mb-2">
+        <div class="flex">
+          @for (star of stars(); track $index) {
+            <svg class="w-3 h-3" [class]="star !== 'empty' ? 'text-amber-400 fill-current' : 'text-gray-200 fill-current'" viewBox="0 0 20 20">
+              <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/>
+            </svg>
+          }
+        </div>
+        <span class="text-[10px] text-gray-400 font-medium">{{ product().rating | number:'1.1-1' }} ({{ product().reviewsCount }})</span>
+      </div>
+    }
+
+    <!-- Price row -->
+    <div class="pc-price-row">
+      @if (product().flashSaleLive && product().flashSalePrice) {
+        <!-- Flash sale: big new price, small struck-through original -->
+        <div class="flex flex-col gap-0.5">
+          <span class="text-[11px] text-gray-400 line-through leading-none">{{ product().price }} TND</span>
+          <div class="flex items-baseline gap-1.5">
+            <span class="text-xl font-black text-red-500 leading-none">{{ product().flashSalePrice }} TND</span>
+            <span class="flash-price-pct">-{{ ((product().price - product().flashSalePrice!) / product().price * 100) | number:'1.0-0' }}%</span>
+          </div>
+        </div>
+      } @else if (product().originalPrice && product().originalPrice! > product().price) {
+        <!-- Regular sale: big current price, small struck-through original -->
+        <div class="flex flex-col gap-0.5">
+          <span class="text-[11px] text-gray-400 line-through leading-none">{{ product().originalPrice }} TND</span>
+          <span class="text-xl font-black text-primary leading-none">{{ product().price }} TND</span>
+        </div>
+      } @else {
+        <span class="text-xl font-black text-primary leading-none">{{ product().price }} TND</span>
+      }
+
+      <!-- Cart / Buy button -->
+      <button (click)="handleMainAction()"
+              [disabled]="isOutOfStock() || isAddingToCart()"
+              class="pc-cart-btn"
+              [class.pc-cart-disabled]="isOutOfStock()">
+        @if (isAddingToCart()) {
+          <svg class="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+          </svg>
+        } @else if (isOutOfStock()) {
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        } @else {
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13l-2.5 6.5M7 13v8a2 2 0 002 2h6a2 2 0 002-2v-8"/>
+          </svg>
         }
-        
-        <!-- Luxury Badge Overlay -->
-        @if (isFeatured()) {
-          <div class="absolute top-0 right-0 z-20">
-            <div class="bg-accent-gold text-white text-[9px] font-black px-3 py-1 uppercase tracking-widest shadow-xl rounded-bl-xl">
-              Featured
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Quick View Modal ── -->
+@if (showQuickView()) {
+  <div class="qv-backdrop" (click)="closeQuickView()">
+    <div class="qv-modal" (click)="$event.stopPropagation()">
+
+      <!-- Close -->
+      <button (click)="closeQuickView()" class="qv-close">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+
+      <!-- Image -->
+      <div class="qv-img-wrap">
+        <img [src]="product().imageUrl" [alt]="product().name" class="qv-img">
+        @if (product().flashSaleLive) {
+          <span class="flash-sale-badge absolute top-3 left-3">⚡ FLASH SALE</span>
+        }
+      </div>
+
+      <!-- Content -->
+      <div class="qv-content">
+        <p class="text-[10px] font-black text-primary/70 uppercase tracking-widest mb-1">{{ product().category }}</p>
+        <h2 class="text-lg font-black text-gray-900 leading-tight mb-1">{{ product().name }}</h2>
+        <p class="text-xs text-gray-400 mb-3">by <span class="font-semibold text-gray-600">{{ product().sellerName }}</span></p>
+
+        <!-- Stars -->
+        @if (product().reviewsCount > 0) {
+          <div class="flex items-center gap-1.5 mb-3">
+            <div class="flex">
+              @for (star of stars(); track $index) {
+                <svg class="w-3.5 h-3.5" [class]="star !== 'empty' ? 'text-amber-400 fill-current' : 'text-gray-200 fill-current'" viewBox="0 0 20 20">
+                  <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/>
+                </svg>
+              }
             </div>
+            <span class="text-xs text-gray-400">{{ product().rating | number:'1.1-1' }} ({{ product().reviewsCount }} reviews)</span>
           </div>
         }
-        
-        <!-- Favorite Button -->
-        <div class="absolute top-4 right-4 flex flex-col gap-2 translate-x-16 group-hover:translate-x-0 transition-transform duration-500">
-            <button
-                (click)="toggleFavorite($event)"
-                [disabled]="isTogglingFavorite()"
-                aria-label="Toggle favorite"
-                class="w-12 h-12 bg-surface rounded-full flex items-center justify-center shadow-xl transition-all disabled:opacity-50 border border-surface-border"
-                [class.text-primary]="isFavorited()"
-                [class.text-text-muted]="!isFavorited()"
-                [class.hover:bg-primary]="!isFavorited()"
-                [class.hover:text-white]="!isFavorited()">
-                <svg class="h-6 w-6" [attr.fill]="isFavorited() ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                </svg>
-            </button>
-        </div>
-        
-        <!-- Quick Actions Overlay -->
-        <div
-            class="absolute inset-x-0 bottom-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-500 bg-gradient-to-t from-black/60 to-transparent">
-            
-            <!-- Quick View Button -->
-            <a [routerLink]="['/product', product().id]"
-                class="w-full bg-white/90 backdrop-blur-sm text-dark py-3 rounded-xl font-black hover:bg-white transition-all text-sm uppercase tracking-widest block text-center mb-3">
-                Quick View
-            </a>
-            
-            <!-- Enhanced Role-based Action Buttons -->
-            @if (shouldShowCheckout()) {
-                <!-- Visitor: Enhanced Checkout Button -->
-                <button
-                    (click)="quickCheckout()"
-                    [disabled]="isOutOfStock()"
-                    [class]="'w-full py-3 rounded-xl font-black transition-all text-sm uppercase tracking-widest ' + 
-                            (isOutOfStock() ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 
-                             isLowStock() ? 'bg-orange-500 text-white hover:bg-orange-600 animate-pulse' : 
-                             'bg-primary text-white hover:bg-primary-dark')">
-                    @if (isOutOfStock()) {
-                        🚫 Out of Stock
-                    } @else if (isLowStock()) {
-                        🔥 Buy Now ({{ product().stock }} left!)
-                    } @else {
-                        🛒 Buy Now
-                    }
-                </button>
-            } @else if (shouldShowAddToCart()) {
-                <!-- Client: Enhanced Add to Cart -->
-                <button
-                    (click)="product().stock === 1 ? buyNow() : addToCart()"
-                    [disabled]="isOutOfStock() || isAddingToCart()"
-                    [class]="'w-full py-3 rounded-xl font-black transition-all text-sm uppercase tracking-widest ' + 
-                            (isOutOfStock() ? 'bg-gray-300 text-gray-500 cursor-not-allowed' :
-                             product().stock === 1 ? 'bg-primary text-white hover:bg-primary-dark' :
-                             isLowStock() ? 'bg-orange-400 text-dark hover:bg-orange-500 animate-pulse' :
-                             'bg-accent text-dark hover:bg-accent-dark') + 
-                            (isAddingToCart() ? ' opacity-75' : '')">
-                    @if (isAddingToCart()) {
-                        <span class="inline-flex items-center gap-2">
-                            <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                            </svg>
-                            Adding...
-                        </span>
-                    } @else if (isOutOfStock()) {
-                        🚫 Out of Stock
-                    } @else if (product().stock === 1) {
-                        🔥 Buy Now
-                    } @else if (isLowStock()) {
-                        ⚡ Add to Cart ({{ product().stock }} left!)
-                    } @else {
-                        ➕ Add to Cart
-                    }
-                </button>
-            } @else {
-                <!-- Other roles: View Details -->
-                <a [routerLink]="['/product', product().id]"
-                    class="w-full bg-gray-100 text-dark py-3 rounded-xl font-black hover:bg-gray-200 transition-all text-sm uppercase tracking-widest block text-center">
-                    👁️ View Details
-                </a>
-            }
+
+        <!-- Description -->
+        @if (product().description) {
+          <p class="text-xs text-gray-500 leading-relaxed mb-4 line-clamp-3">{{ product().description }}</p>
+        }
+
+        <!-- Price -->
+        <div class="mb-4">
+          @if (product().flashSaleLive && product().flashSalePrice) {
+            <span class="text-xs text-gray-400 line-through block">{{ product().price }} TND</span>
+            <div class="flex items-baseline gap-2">
+              <p class="text-2xl font-black text-red-500">{{ product().flashSalePrice }} <span class="text-sm font-semibold">TND</span></p>
+              <span class="flash-price-pct">-{{ ((product().price - product().flashSalePrice!) / product().price * 100) | number:'1.0-0' }}%</span>
+            </div>
+          } @else if (product().originalPrice && product().originalPrice! > product().price) {
+            <span class="text-xs text-gray-400 line-through block">{{ product().originalPrice }} TND</span>
+            <p class="text-2xl font-black text-primary">{{ product().price }} <span class="text-sm font-semibold">TND</span></p>
+          } @else {
+            <p class="text-2xl font-black text-primary">{{ product().price }} <span class="text-sm font-semibold">TND</span></p>
+          }
         </div>
 
-        <!-- Enhanced Status Badges -->
-        <div class="absolute top-4 left-4 flex flex-col gap-2">
-            @if (product().originalPrice && product().originalPrice! > product().price) {
-                <span class="bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-tighter shadow-lg">
-                    Sale
-                </span>
-            }
-            @if (!isOutOfStock()) {
-                <span class="bg-accent text-dark text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-tighter shadow-lg">
-                    New
-                </span>
-            }
-            <!-- Enhanced Stock Status Badge -->
-            <span [class]="'text-[10px] font-bold px-3 py-1 rounded-full shadow-lg flex items-center gap-1 ' + getStockStatusClass()"
-                  [class.animate-pulse]="stockStatusInfo().urgent">
-                <span>{{ getStockStatusIcon() }}</span>
-                {{ getStockStatusText() }}
+        <!-- Stock -->
+        <div class="flex items-center gap-2 mb-5">
+          @if (isOutOfStock()) {
+            <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-red-100 text-red-700 border border-red-200">
+              🚫 Out of Stock
             </span>
+          } @else if (isLowStock()) {
+            <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-orange-100 text-orange-700 border border-orange-200">
+              ⚡ Only {{ product().stock }} left in stock
+            </span>
+          } @else {
+            <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-green-100 text-green-700 border border-green-200">
+              ✅ {{ product().stock }} in stock
+            </span>
+          }
         </div>
+
+        <!-- Actions -->
+        <div class="flex gap-2">
+          <button (click)="handleMainAction(); closeQuickView()"
+                  [disabled]="isOutOfStock() || isAddingToCart()"
+                  class="flex-1 py-2.5 rounded-xl font-black text-sm transition-all"
+                  [class]="isOutOfStock() ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-primary text-white hover:bg-primary-dark'">
+            {{ isOutOfStock() ? 'Out of Stock' : (isClient() ? 'Add to Cart' : 'Buy Now') }}
+          </button>
+          <a [routerLink]="['/product', product().id]" (click)="closeQuickView()"
+             class="px-4 py-2.5 rounded-xl font-bold text-sm border-2 border-gray-200 text-gray-600 hover:border-primary hover:text-primary transition-all">
+            Full Details
+          </a>
+        </div>
+      </div>
     </div>
-
-    <!-- Product Info Panel -->
-    <div class="p-5">
-        <div class="flex justify-between items-start mb-2">
-            <div class="flex-1">
-                <p class="text-[10px] font-black text-primary/80 uppercase tracking-widest mb-1">{{ product().category }}</p>
-                <a [routerLink]="['/product', product().id]">
-                    <h3 class="font-bold text-text-color text-lg group-hover:text-primary transition-colors leading-tight line-clamp-2">
-                        {{ product().name }}
-                    </h3>
-                </a>
-                <p class="text-[11px] text-text-muted mt-1">by <span class="font-semibold">{{ product().sellerName }}</span></p>
-            </div>
-        </div>
-
-        <!-- Rating -->
-        <div class="flex items-center gap-2 mb-4">
-            <div class="flex" role="img" [attr.aria-label]="'Rating: ' + product().rating + ' out of 5 stars'">
-                @for (star of stars(); track $index) {
-                    @if (star === 'full') {
-                        <svg class="h-4 w-4 text-accent fill-current" viewBox="0 0 20 20">
-                            <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
-                        </svg>
-                    } @else if (star === 'half') {
-                        <svg class="h-4 w-4 text-accent" viewBox="0 0 20 20">
-                            <defs>
-                                <linearGradient [id]="'half-star-' + product().id">
-                                    <stop offset="50%" stop-color="currentColor" />
-                                    <stop offset="50%" stop-color="#e5e7eb" />
-                                </linearGradient>
-                            </defs>
-                            <path [attr.fill]="'url(#half-star-' + product().id + ')'" d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
-                        </svg>
-                    } @else {
-                        <svg class="h-4 w-4 text-gray-300 fill-current" viewBox="0 0 20 20">
-                            <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
-                        </svg>
-                    }
-                }
-            </div>
-            <span class="text-secondary font-bold text-xs">({{ product().reviewsCount }})</span>
-        </div>
-
-        <!-- Price and Action -->
-        <div class="flex items-center justify-between pt-4 border-t border-secondary/10">
-            <div class="flex flex-col">
-                @if (product().originalPrice && product().originalPrice! > product().price) {
-                    <span class="text-xs text-gray-400 line-through">{{ product().originalPrice }} TND</span>
-                }
-                <div class="flex items-baseline gap-1">
-                    <span class="text-2xl font-black text-primary">{{ product().price }}</span>
-                    <span class="text-sm font-semibold text-primary">TND</span>
-                </div>
-                @if (product().originalPrice && product().originalPrice! > product().price) {
-                    <span class="text-xs font-bold text-green-600">
-                        Save {{ ((product().originalPrice! - product().price) / product().originalPrice! * 100) | number:'1.0-0' }}%
-                    </span>
-                }
-            </div>
-
-            <!-- Enhanced Main Action Button with Stock Awareness -->
-            <button
-                (click)="handleMainAction()"
-                [disabled]="isOutOfStock() || isAddingToCart()"
-                [class]="getActionButtonClasses()"
-                [attr.aria-label]="getActionButtonText()"
-                [attr.title]="isOutOfStock() ? 'This product is currently out of stock' : getActionButtonText()">
-                
-                @if (isAddingToCart()) {
-                    <svg class="h-4 w-4 animate-spin mr-1.5" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span class="text-xs font-bold">Adding...</span>
-                } @else if (isOutOfStock()) {
-                    <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728"></path>
-                    </svg>
-                    <span class="text-xs font-bold">Out of Stock</span>
-                } @else if (!isAuthenticated()) {
-                    <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 6.5M7 13v8a2 2 0 002 2h6a2 2 0 002-2v-8m-8 8V9a3 3 0 013-3h2a3 3 0 013 3v8" />
-                    </svg>
-                    <span class="text-xs font-bold">{{ isLowStock() ? 'Buy Now!' : 'Buy Now' }}</span>
-                    @if (isLowStock()) {
-                        <div class="absolute -top-1 -right-1 w-2 h-2 bg-orange-400 rounded-full animate-ping"></div>
-                    }
-                } @else if (isClient()) {
-                    <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 6.5M7 13v8a2 2 0 002 2h6a2 2 0 002-2v-8m-8 8V9a3 3 0 013-3h2a3 3 0 013 3v8" />
-                    </svg>
-                    <span class="text-xs font-bold">{{ product().stock === 1 ? 'Buy Now' : 'Add to Cart' }}</span>
-                    @if (isLowStock()) {
-                        <div class="absolute -top-1 -right-1 w-2 h-2 bg-orange-400 rounded-full animate-ping"></div>
-                    }
-                } @else {
-                    <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                    <span class="text-xs font-bold">View</span>
-                }
-            </button>
-        </div>
-    </div>
-</div>
+  </div>
+}

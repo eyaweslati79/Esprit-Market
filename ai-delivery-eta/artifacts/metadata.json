@@ -1,0 +1,18 @@
+{
+  "modelVersion": "delivery-eta-v2",
+  "maeMinutes": 1.35,
+  "riskAccuracy": 0.873,
+  "features": [
+    "distance_km",
+    "route_duration_min",
+    "speed_kmh",
+    "weather",
+    "temperature_c",
+    "wind_speed",
+    "is_rain",
+    "hour",
+    "day_of_week",
+    "vehicle_type"
+  ],
+  "primarySignal": "route_duration_min (OSRM road time)"
+}

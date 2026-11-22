@@ -75,6 +75,15 @@ export class ProviderDashboard implements OnInit {
   readonly searchText = signal<string>('');
   readonly activeTab = signal<'orders' | 'products' | 'services' | 'serviceRequests' | 'coupons' | 'discountRules' | 'eventPromotions' | 'returnedOrders' | 'mlAnalytics'>('orders');
 
+  // ── Flash Sale state ──────────────────────────────────────────────────────
+  showFlashSaleModal = signal(false);
+  flashSaleProduct = signal<Product | null>(null);
+  flashSalePrice = signal<number>(0);
+  flashSaleDuration = signal<24 | 48 | 72>(24);
+  flashSaleMaxQty = signal<number | null>(null);
+  flashSaleSubmitting = signal(false);
+  flashSaleError = signal<string>('');
+
   // ML Analytics
   private providerMLService = inject(ProviderMLService);
   readonly mlAnalytics = signal<ProviderMLAnalytics | null>(null);
@@ -888,6 +897,70 @@ export class ProviderDashboard implements OnInit {
         this.toastService.error('Failed to reject product');
       }
     });
+  }
+
+  // ── Flash Sale Methods ────────────────────────────────────────────────────
+  openFlashSaleModal(product: Product): void {
+    this.flashSaleProduct.set(product);
+    this.flashSalePrice.set(Math.round(product.price * 0.8 * 100) / 100); // default 20% off
+    this.flashSaleDuration.set(24);
+    this.flashSaleMaxQty.set(null);
+    this.flashSaleError.set('');
+    this.showFlashSaleModal.set(true);
+  }
+
+  closeFlashSaleModal(): void {
+    this.showFlashSaleModal.set(false);
+    this.flashSaleProduct.set(null);
+    this.flashSaleError.set('');
+  }
+
+  submitFlashSale(): void {
+    const product = this.flashSaleProduct();
+    if (!product) return;
+
+    const price = this.flashSalePrice();
+    if (!price || price <= 0 || price >= product.price) {
+      this.flashSaleError.set('Flash sale price must be greater than 0 and lower than the original price.');
+      return;
+    }
+
+    this.flashSaleSubmitting.set(true);
+    this.flashSaleError.set('');
+
+    this.productService.startFlashSale(
+      product.id,
+      price,
+      this.flashSaleDuration(),
+      this.flashSaleMaxQty() ?? undefined
+    ).subscribe({
+      next: (updated) => {
+        this.products.update(list => list.map(p => p.id === updated.id ? updated : p));
+        this.toastService.success(`⚡ Flash sale started for "${product.name}"!`);
+        this.flashSaleSubmitting.set(false);
+        this.closeFlashSaleModal();
+      },
+      error: (err) => {
+        this.flashSaleError.set(err?.error?.message || 'Failed to start flash sale.');
+        this.flashSaleSubmitting.set(false);
+      }
+    });
+  }
+
+  stopFlashSale(product: Product): void {
+    if (!confirm(`Stop flash sale for "${product.name}"?`)) return;
+    this.productService.stopFlashSale(product.id).subscribe({
+      next: (updated) => {
+        this.products.update(list => list.map(p => p.id === updated.id ? updated : p));
+        this.toastService.success(`Flash sale stopped for "${product.name}"`);
+      },
+      error: () => this.toastService.error('Failed to stop flash sale.')
+    });
+  }
+
+  getFlashDiscount(product: Product): string {
+    if (!product.flashSalePrice) return '';
+    return Math.round((product.price - product.flashSalePrice) / product.price * 100) + '%';
   }
 
   getProductStatusBadgeClass(status?: ProductStatus): string {

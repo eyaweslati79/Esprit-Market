@@ -27,4 +27,5 @@ public class Post {
     private List<ObjectId> commentIds = new ArrayList<>();
     @Builder.Default
     private List<ObjectId> reactionIds = new ArrayList<>();
+    private String imageUrl;  // optional image attached to the post
 }

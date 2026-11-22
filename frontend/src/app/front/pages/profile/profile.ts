@@ -4,6 +4,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet, ActivatedRoute, Router } fr
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
+import { CATEGORY_NAMES } from '../../core/categories.config';
 import { AuthService } from '../../core/auth.service';
 import { OrderService } from '../../core/order.service';
 import { UserService } from '../../core/user.service';
@@ -44,6 +45,66 @@ export class Profile implements OnInit {
   private savService = inject(SavService);
   private favoriteService = inject(FavoriteService);
   private wrRegistry = inject(WrRegistryService);
+
+  // ── Banner ────────────────────────────────────────────────────────────────
+  bannerHovered = false;
+  hoveredStat = '';
+
+  // Banners 10, 11, 12 (user-selectable)
+  readonly banners = [
+    'assets/banner/banner 10.jfif',
+    'assets/banner/banner 11.jfif',
+    'assets/banner/banner 12.jfif',
+  ];
+  activeBannerIndex = 0;
+
+  get activeBanner(): string { return this.banners[this.activeBannerIndex]; }
+
+  selectBanner(i: number): void { this.activeBannerIndex = i; }
+
+  bannerParticles = Array.from({ length: 12 }, (_, i) => ({
+    x: Math.random() * 55,
+    y: Math.random() * 100,
+    delay: (i * 0.4) % 3,
+    dur: 3 + (i % 4),
+  }));
+
+  getTimeGreeting(): string {
+    const h = new Date().getHours();
+    if (h < 12) return 'Good morning';
+    if (h < 18) return 'Good afternoon';
+    return 'Good evening';
+  }
+
+  getTotalSpent(): number {
+    return this.realOrders().reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+  }
+
+  getLoyaltyProgress(): number {
+    const pts = this.loyaltyAccount()?.points || 0;
+    const level = this.loyaltyAccount()?.level || 'BRONZE';
+    const thresholds: Record<string, [number, number]> = {
+      BRONZE: [0, 500],
+      SILVER: [500, 1500],
+      GOLD:   [1500, 5000],
+      PLATINUM: [5000, 10000],
+    };
+    const [min, max] = thresholds[level] ?? [0, 500];
+    return Math.min(100, Math.round(((pts - min) / (max - min)) * 100));
+  }
+
+  getLoyaltyNextLabel(): string {
+    const pts = this.loyaltyAccount()?.points || 0;
+    const level = this.loyaltyAccount()?.level || 'BRONZE';
+    const next: Record<string, [number, string]> = {
+      BRONZE: [500, 'Silver'],
+      SILVER: [1500, 'Gold'],
+      GOLD:   [5000, 'Platinum'],
+    };
+    const entry = next[level];
+    if (!entry) return 'Max level reached';
+    return `${entry[1]} in ${Math.max(0, entry[0] - pts)} pts`;
+  }
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   user = computed(() => ({
@@ -133,7 +194,7 @@ export class Profile implements OnInit {
     theme: 'light' as 'light' | 'dark' | 'system'
   });
   availableInterests  = ['Software Engineering', 'Data Science', 'Mobile Development', 'Web Development', 'AI/ML', 'Cybersecurity', 'DevOps', 'Cloud Computing'];
-  availableCategories = ['Electronics', 'Books', 'Gaming', 'Furniture', 'Services', 'Sports', 'Clothing'];
+  availableCategories = CATEGORY_NAMES;
 
   loyaltyProgress = computed(() => {
     const account = this.loyaltyAccount();

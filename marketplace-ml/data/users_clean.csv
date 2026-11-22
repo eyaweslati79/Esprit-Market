@@ -1,0 +1,21 @@
+user_id,firstName,lastName,email,role,type,enabled,trustScore
+1,Ahmed,Ben Ali,ahmed1@gmail.com,student,passenger,True,5
+2,Amal,Trabelsi,amal2@gmail.com,student,passenger,True,3
+3,Imen,Saidi,imen3@gmail.com,student,passenger,True,7
+4,Karim,Ben Yedder,karim4@gmail.com,student,passenger,True,2
+5,Aziz,Farhat,aziz5@gmail.com,student,passenger,True,6
+6,Salma,Kaabi,salma6@gmail.com,student,passenger,True,8
+7,Rayen,Jaziri,rayen7@gmail.com,student,passenger,True,4
+8,Mariem,Ben Salah,mariem8@gmail.com,student,passenger,True,9
+9,Omar,Triki,omar9@gmail.com,student,passenger,True,1
+10,Youssef,Khelil,youssef10@gmail.com,student,passenger,True,5
+11,Lina,Chaker,lina11@gmail.com,student,passenger,True,6
+12,Amir,Bouazizi,amir12@gmail.com,student,passenger,True,4
+13,Hana,Msadek,hana13@gmail.com,student,passenger,True,7
+14,Farah,Hamdi,farah14@gmail.com,student,passenger,True,5
+15,Mehdi,Ben Ali,mehdi15@gmail.com,student,passenger,True,3
+16,Nour,Trabelsi,nour16@gmail.com,student,passenger,True,8
+17,Ali,Ben Salah,ali17@gmail.com,student,passenger,True,2
+18,Sara,Jaziri,sara18@gmail.com,student,passenger,True,9
+19,Wael,Khalil,wael19@gmail.com,student,passenger,True,6
+20,Ines,Bouazizi,ines20@gmail.com,student,passenger,True,7

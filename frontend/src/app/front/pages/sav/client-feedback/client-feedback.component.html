@@ -164,25 +164,74 @@
               @if (isLoadingCartItems()) {
                 <div class="dm-input flex items-center gap-2 text-sm dm-muted">
                   <div class="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
-                  Loading items
+                  Loading orders…
                 </div>
               } @else if (cartItemsError()) {
                 <div class="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:bg-amber-900/20 dark:text-amber-400">
-                  Items unavailable.
+                  Unable to load orders.
                 </div>
-              } @else if (cartItems().length === 0) {
+              } @else if (orders().length === 0) {
                 <div class="rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm dm-muted dark:border-gray-600 dark:bg-gray-800/40">
-                  No purchased items.
+                  No eligible orders found.
                 </div>
               } @else {
-                <select formControlName="cartItemId" class="dm-input cursor-pointer appearance-none" [class.border-red-400]="isFieldInvalid('cartItemId')">
-                  <option value="" disabled selected>Select item</option>
-                  @for (item of cartItems(); track item.id) {
-                    <option [value]="item.id">
-                      {{ item.name }} - x{{ item.quantity }} - {{ item.unitPrice | number:'1.2-2' }} TND
-                    </option>
-                  }
-                </select>
+                <!-- Hidden form control keeps the value in sync -->
+                <input type="hidden" formControlName="cartItemId">
+
+                <!-- Orders grouped list — scrollable, 4 orders visible at a time -->
+                <div class="rounded-xl border overflow-hidden"
+                     [class]="isFieldInvalid('cartItemId') ? 'border-red-400' : 'border-gray-200 dark:border-gray-700'">
+                  <div class="max-h-[17rem] overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
+
+                    @for (order of orders(); track order.id) {
+                      <!-- Order header row -->
+                      <div class="px-3 pt-2.5 pb-1 bg-gray-50 dark:bg-gray-800/60 flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2 min-w-0">
+                          <span class="text-[11px] font-black dm-title truncate">{{ order.orderNumber }}</span>
+                          <span class="text-[10px] dm-muted">{{ formatDate(order.createdAt) }}</span>
+                        </div>
+                        <span class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wide"
+                              [class]="getOrderStatusBadge(order.status)">
+                          {{ order.status }}
+                        </span>
+                      </div>
+
+                      <!-- Items inside this order -->
+                      @for (item of orderItems(order); track item.id) {
+                        <button type="button"
+                                (click)="selectCartItem(item.id)"
+                                class="w-full flex items-center justify-between gap-3 pl-5 pr-3 py-2.5 text-left text-sm transition-colors border-t border-gray-50 dark:border-gray-800/40"
+                                [class]="isItemSelected(item.id)
+                                  ? 'bg-primary/10 text-primary'
+                                  : 'bg-white hover:bg-primary/5 dark:bg-gray-900 dark:hover:bg-gray-800 dm-body'">
+                          <!-- Selection indicator -->
+                          <span class="shrink-0 w-4 h-4 rounded-full border-2 flex items-center justify-center mr-1"
+                                [class]="isItemSelected(item.id)
+                                  ? 'border-primary bg-primary'
+                                  : 'border-gray-300 dark:border-gray-600'">
+                            @if (isItemSelected(item.id)) {
+                              <span class="w-1.5 h-1.5 rounded-full bg-white block"></span>
+                            }
+                          </span>
+                          <span class="flex-1 truncate font-semibold text-sm">{{ item.productName }}</span>
+                          <span class="shrink-0 text-xs font-bold dm-muted whitespace-nowrap">
+                            ×{{ item.quantity }} · {{ item.productPrice | number:'1.2-2' }} TND
+                          </span>
+                        </button>
+                      }
+                    }
+
+                  </div>
+                </div>
+
+                @if (isFieldInvalid('cartItemId')) {
+                  <p class="text-xs text-red-500 mt-1">Please select an item.</p>
+                }
+                @if (feedbackForm.get('cartItemId')?.value) {
+                  <p class="text-xs text-primary font-semibold mt-1">
+                    ✓ {{ getItemName(feedbackForm.get('cartItemId')?.value) }} selected
+                  </p>
+                }
               }
             </div>
 

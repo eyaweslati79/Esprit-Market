@@ -25,4 +25,12 @@ public class ProductRequestDTO {
     @Builder.Default
     private List<ProductImageDTO> images = new ArrayList<>();
     private ProductStatus status;
+
+    // ── Flash Sale ────────────────────────────────────────────────────────────
+    private boolean flashSaleActive;
+    private Double flashSalePrice;
+    private java.time.LocalDateTime flashSaleStartTime;
+    private java.time.LocalDateTime flashSaleEndTime;
+    private Integer flashSaleMaxQuantity;
+    private Integer flashSaleSoldQuantity;
 }

@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, tap, catchError, throwError, map } from 'rxjs';
+import { Observable, of, tap, catchError, throwError, map } from 'rxjs';
 import { Product } from '../models/product';
 import { environment } from '../../../environment';
 import { ImageUrlHelper } from '../../shared/utils/image-url.helper';
@@ -64,6 +64,17 @@ export interface ProductResponseDTO {
   approvedAt?: string;
   approvedBy?: string;
   rejectionReason?: string;
+  // ── Flash Sale ────────────────────────────────────────────────────────────
+  flashSaleActive?: boolean;
+  flashSalePrice?: number;
+  flashSaleStartTime?: string;
+  flashSaleEndTime?: string;
+  flashSaleMaxQuantity?: number;
+  flashSaleSoldQuantity?: number;
+  flashSaleLive?: boolean;
+  // ── Rating ────────────────────────────────────────────────────────────────
+  averageRating?: number;
+  reviewsCount?: number;
 }
 
 @Injectable({
@@ -101,56 +112,46 @@ export class ProductService {
    * @returns Mapped frontend products
    */
   private mapToFrontendProducts(dtos: ProductResponseDTO[]): Product[] {
-    return dtos.map(dto => ({
-      id: dto.id,
-      name: dto.name,
-      description: dto.description,
-      price: dto.price,
-      category: dto.categoryName || 'Autres',  // ✅ Use backend enriched value
-      imageUrl: this.getValidImageUrl(dto.images?.[0]?.url),
-      images: dto.images?.map(img => this.getValidImageUrl(img.url)) || [],
-      sellerId: dto.shopId,
-      sellerName: dto.sellerName || 'Unknown Seller',  // ✅ Use backend enriched value
-      rating: 4.5, // Will be enhanced with real ratings
-      reviewsCount: 0, // Will be enhanced with real review counts
-      stock: dto.stock,
-      stockStatus: (dto.stockStatus || 'OUT_OF_STOCK') as any,  // ✅ Use backend enriched value
-      condition: 'NEW' as any,
-      isNegotiable: false,
-      isAvailable: dto.isAvailable ?? (dto.stock > 0),  // ✅ Use backend enriched value
-      // Add approval workflow fields
-      status: dto.status as any,
-      approvedAt: dto.approvedAt ? new Date(dto.approvedAt) : undefined,
-      createdAt: dto.createdAt ? new Date(dto.createdAt) : undefined,
-      approvedBy: dto.approvedBy,
-      rejectionReason: dto.rejectionReason
-    }));
+    return dtos.map(dto => {
+      const p: Product = {
+        id: dto.id,
+        name: dto.name,
+        description: dto.description,
+        price: dto.price,
+        category: dto.categoryName || 'Autres',
+        imageUrl: this.getValidImageUrl(dto.images?.[0]?.url),
+        images: dto.images?.map(img => this.getValidImageUrl(img.url)) || [],
+        sellerId: dto.shopId,
+        sellerName: dto.sellerName || 'Unknown Seller',
+        rating: dto.averageRating ?? 0,
+        reviewsCount: dto.reviewsCount ?? 0,
+        stock: dto.stock,
+        stockStatus: (dto.stockStatus || 'OUT_OF_STOCK') as any,
+        condition: 'NEW' as any,
+        isNegotiable: false,
+        isAvailable: dto.isAvailable ?? (dto.stock > 0),
+        status: dto.status as any,
+        rejectionReason: dto.rejectionReason,
+        flashSaleActive: dto.flashSaleActive,
+        flashSalePrice: dto.flashSalePrice,
+        flashSaleLive: dto.flashSaleLive,
+      };
+      // Only parse dates when present (avoids unnecessary Date allocations)
+      if (dto.approvedAt)        p.approvedAt        = new Date(dto.approvedAt);
+      if (dto.createdAt)         p.createdAt         = new Date(dto.createdAt);
+      if (dto.approvedBy)        p.approvedBy        = dto.approvedBy;
+      if (dto.flashSaleStartTime) p.flashSaleStartTime = new Date(dto.flashSaleStartTime);
+      if (dto.flashSaleEndTime)   p.flashSaleEndTime   = new Date(dto.flashSaleEndTime);
+      if (dto.flashSaleMaxQuantity)  p.flashSaleMaxQuantity  = dto.flashSaleMaxQuantity;
+      if (dto.flashSaleSoldQuantity) p.flashSaleSoldQuantity = dto.flashSaleSoldQuantity;
+      return p;
+    });
   }
 
-  /**
-   * Get stock status from stock quantity
-   * @param stock - Stock quantity
-   * @returns Stock status string
-   */
   private getStockStatus(stock: number): string {
     if (stock > 10) return 'IN_STOCK';
     if (stock > 0) return 'LOW_STOCK';
     return 'OUT_OF_STOCK';
-  }
-
-  /**
-   * Get category name from category IDs
-   * Maps ObjectIds to category display names
-   * @param categoryIds - Array of category IDs
-   * @returns Category display name
-   */
-  private getCategoryFromIds(categoryIds: string[] | undefined): string {
-    if (!categoryIds || categoryIds.length === 0) {
-      return 'Autres';
-    }
-    // For now, return a generic category
-    // In the future, this can be enhanced to fetch actual category names
-    return 'Produits';
   }
 
   /**
@@ -164,31 +165,17 @@ export class ProductService {
    * This endpoint is secured and only returns products belonging to the provider's shop
    */
   getMyProducts(): Observable<Product[]> {
-    console.log('📦 ProductService: Fetching provider\'s own products from /api/products/mine');
     return this.http.get<ProductResponseDTO[]>(`${this.apiUrl}/mine`).pipe(
-      map((dtos: ProductResponseDTO[]) => {
-        console.log(`✅ ProductService: Received ${dtos.length} products for provider's shop`);
-        return this.mapToFrontendProducts(dtos);
-      }),
-      catchError((error) => {
-        console.error('❌ ProductService: Failed to fetch provider products:', error);
-        throw error;
-      })
+      map((dtos) => this.mapToFrontendProducts(dtos)),
+      catchError((error) => throwError(() => error))
     );
   }
 
   getAll(filter?: ProductFilter, forceRefresh = false): Observable<Product[]> {
     const now = Date.now();
-    
-    // Check cache (ignore filter for now as backend doesn't support it, 
-    // but keep parameter to avoid build errors)
     if (!forceRefresh && this.productsCache.length > 0 && (now - this.lastFetchTime < this.CACHE_DURATION)) {
-      console.log('⚡ Returning products from cache');
       this.products.set(this.productsCache);
-      return new Observable(subscriber => {
-        subscriber.next(this.productsCache);
-        subscriber.complete();
-      });
+      return of(this.productsCache);
     }
 
     this.isLoading.set(true);
@@ -199,22 +186,16 @@ export class ProductService {
         this.lastFetchTime = Date.now();
         this.products.set(products);
         this.isLoading.set(false);
-        console.log('✅ Products loaded from server:', products.length);
         return products;
       }),
       catchError((error) => {
         this.error.set('Failed to load products');
         this.isLoading.set(false);
-        console.error('❌ Products loading error:', error);
         return throwError(() => error);
       })
     );
   }
 
-  /**
-   * Get only approved products (for marketplace display)
-   * @returns Observable with approved products list
-   */
   getApprovedProducts(): Observable<Product[]> {
     this.isLoading.set(true);
     return this.http.get<ProductResponseDTO[]>(`${this.apiUrl}/approved`).pipe(
@@ -222,195 +203,116 @@ export class ProductService {
         const products = this.mapToFrontendProducts(dtos);
         this.products.set(products);
         this.isLoading.set(false);
-        console.log('✅ Approved products loaded:', products.length);
         return products;
       }),
       catchError((error) => {
         this.error.set('Failed to load approved products');
         this.isLoading.set(false);
-        console.error('❌ Approved products loading error:', error);
         return throwError(() => error);
       })
     );
   }
 
-  /**
-   * Get products by status (for admin/seller dashboards)
-   * @param status - Product status (PENDING, APPROVED, REJECTED, SUSPENDED)
-   * @returns Observable with products list
-   */
   getProductsByStatus(status: string): Observable<Product[]> {
     this.isLoading.set(true);
     return this.http.get<ProductResponseDTO[]>(`${this.apiUrl}/status/${status}`).pipe(
       map((dtos) => {
         const products = this.mapToFrontendProducts(dtos);
         this.isLoading.set(false);
-        console.log(`✅ Products with status ${status} loaded:`, products.length);
         return products;
       }),
       catchError((error) => {
         this.error.set(`Failed to load ${status} products`);
         this.isLoading.set(false);
-        console.error(`❌ ${status} products loading error:`, error);
         return throwError(() => error);
       })
     );
   }
 
-  /**
-   * Approve a product (ADMIN/PROVIDER)
-   * @param productId - Product ID to approve
-   * @returns Observable with approved product
-   */
   approveProduct(productId: string): Observable<Product> {
-    this.isLoading.set(true);
     return this.http.put<ProductResponseDTO>(`${this.apiUrl}/${productId}/approve`, {}).pipe(
-      map((dto) => {
-        const product = this.mapToFrontendProducts([dto])[0];
-        this.isLoading.set(false);
-        console.log('✅ Product approved:', product);
-        return product;
-      }),
-      catchError((error) => {
-        this.error.set('Failed to approve product');
-        this.isLoading.set(false);
-        console.error('❌ Product approval error:', error);
-        return throwError(() => error);
-      })
+      map((dto) => this.mapToFrontendProducts([dto])[0]),
+      catchError((error) => { this.error.set('Failed to approve product'); return throwError(() => error); })
     );
   }
 
-  /**
-   * Reject a product (ADMIN only)
-   * @param productId - Product ID to reject
-   * @param reason - Rejection reason
-   * @returns Observable with rejected product
-   */
   rejectProduct(productId: string, reason: string): Observable<Product> {
-    this.isLoading.set(true);
     return this.http.put<ProductResponseDTO>(`${this.apiUrl}/${productId}/reject`, { reason }).pipe(
-      map((dto) => {
-        const product = this.mapToFrontendProducts([dto])[0];
-        this.isLoading.set(false);
-        console.log('✅ Product rejected:', product);
-        return product;
-      }),
-      catchError((error) => {
-        this.error.set('Failed to reject product');
-        this.isLoading.set(false);
-        console.error('❌ Product rejection error:', error);
-        return throwError(() => error);
-      })
+      map((dto) => this.mapToFrontendProducts([dto])[0]),
+      catchError((error) => { this.error.set('Failed to reject product'); return throwError(() => error); })
     );
   }
 
-  /**
-   * Get a single product by ID
-   * @param id - Product ID
-   * @returns Observable with product details
-   */
   getById(id: string): Observable<Product> {
+    // Check cache first
+    const cached = this.productsCache.find(p => p.id === id);
+    if (cached) {
+      this.selectedProduct.set(cached);
+      return of(cached);
+    }
     this.isLoading.set(true);
     return this.http.get<ProductResponseDTO>(`${this.apiUrl}/${id}`).pipe(
       map((dto) => {
         const product = this.mapToFrontendProducts([dto])[0];
         this.selectedProduct.set(product);
         this.isLoading.set(false);
-        console.log('✅ Product loaded:', product);
         return product;
       }),
       catchError((error) => {
         this.error.set('Failed to load product');
         this.isLoading.set(false);
-        console.error('❌ Product loading error:', error);
         return throwError(() => error);
       })
     );
   }
 
-  /**
-   * Create a new product (PROVIDER only)
-   * @param data - Product creation data
-   * @returns Observable with created product
-   */
   create(data: CreateProductRequest): Observable<Product> {
-    // ❗ VALIDATION: Product MUST have at least one category
     if (!data.categoryIds || data.categoryIds.length === 0) {
-      console.error('❌ Cannot create product without categories');
-      throw new Error('Product must have at least one category');
+      return throwError(() => new Error('Product must have at least one category'));
     }
-    
-    // Transform the data to match backend DTO structure
-    const backendData = {
-      name: data.name,
-      description: data.description,
-      shopId: data.shopId,
-      categoryIds: data.categoryIds,
-      price: data.price,
-      stock: data.stock,
-      images: data.images || []
-    };
-    
     this.isLoading.set(true);
-    console.log('🚀 Creating product with backend format:', backendData);
-    return this.http.post<ProductResponseDTO>(this.apiUrl, backendData).pipe(
+    return this.http.post<ProductResponseDTO>(this.apiUrl, data).pipe(
       map((dto) => {
         const product = this.mapToFrontendProducts([dto])[0];
         this.isLoading.set(false);
-        console.log('✅ Product created:', product);
+        this.productsCache = []; // invalidate cache
         return product;
       }),
       catchError((error) => {
         this.error.set('Failed to create product');
         this.isLoading.set(false);
-        console.error('❌ Product creation error:', error);
         return throwError(() => error);
       })
     );
   }
 
-  /**
-   * Update an existing product (PROVIDER/owner only)
-   * @param id - Product ID
-   * @param data - Product update data
-   * @returns Observable with updated product
-   */
   update(id: string, data: Partial<CreateProductRequest>): Observable<Product> {
     this.isLoading.set(true);
-    console.log('✏️ Updating product:', id, data);
     return this.http.put<ProductResponseDTO>(`${this.apiUrl}/${id}`, data).pipe(
       map((dto) => {
         const product = this.mapToFrontendProducts([dto])[0];
         this.isLoading.set(false);
-        console.log('✅ Product updated:', product);
+        this.productsCache = []; // invalidate cache
         return product;
       }),
       catchError((error) => {
         this.error.set('Failed to update product');
         this.isLoading.set(false);
-        console.error('❌ Product update error:', error);
         return throwError(() => error);
       })
     );
   }
 
-  /**
-   * Delete a product (PROVIDER/owner only)
-   * @param id - Product ID to delete
-   * @returns Observable with void on success
-   */
   delete(id: string): Observable<void> {
     this.isLoading.set(true);
-    console.log('🗑️ Deleting product:', id);
     return this.http.delete<void>(`${this.apiUrl}/${id}`).pipe(
       tap(() => {
         this.isLoading.set(false);
-        console.log('✅ Product deleted:', id);
+        this.productsCache = this.productsCache.filter(p => p.id !== id);
       }),
       catchError((error) => {
         this.error.set('Failed to delete product');
         this.isLoading.set(false);
-        console.error('❌ Product deletion error:', error);
         return throwError(() => error);
       })
     );
@@ -469,6 +371,35 @@ export class ProductService {
         console.error('❌ Delete image error:', err);
         return throwError(() => err);
       })
+    );
+  }
+
+  // ── Flash Sale ──────────────────────────────────────────────────────────────
+
+  startFlashSale(productId: string, flashSalePrice: number, durationHours: 24 | 48 | 72, maxQuantity?: number): Observable<Product> {
+    return this.http.post<ProductResponseDTO>(`${this.apiUrl}/${productId}/flash-sale/start`, {
+      flashSalePrice,
+      durationHours,
+      maxQuantity: maxQuantity ?? null
+    }).pipe(
+      map(dto => this.mapToFrontendProducts([dto])[0]),
+      tap(() => { this.productsCache = []; }), // invalidate cache
+      catchError(err => { console.error('❌ Flash sale start error:', err); return throwError(() => err); })
+    );
+  }
+
+  stopFlashSale(productId: string): Observable<Product> {
+    return this.http.post<ProductResponseDTO>(`${this.apiUrl}/${productId}/flash-sale/stop`, {}).pipe(
+      map(dto => this.mapToFrontendProducts([dto])[0]),
+      tap(() => { this.productsCache = []; }),
+      catchError(err => { console.error('❌ Flash sale stop error:', err); return throwError(() => err); })
+    );
+  }
+
+  getLiveFlashSales(): Observable<Product[]> {
+    return this.http.get<ProductResponseDTO[]>(`${this.apiUrl}/flash-sales/live`).pipe(
+      map(dtos => this.mapToFrontendProducts(dtos)),
+      catchError(err => { console.error('❌ Live flash sales error:', err); return throwError(() => err); })
     );
   }
 }

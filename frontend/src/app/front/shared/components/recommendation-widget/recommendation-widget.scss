@@ -8,3 +8,54 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+// ── Netflix-style horizontal row ─────────────────────────────────────────────
+.rec-row-wrap {
+  position: relative;
+  padding: 0 4px;
+}
+
+.rec-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 18px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 10px;
+  padding-top: 4px;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+// ── Arrows ────────────────────────────────────────────────────────────────────
+.rec-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 20;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 14px rgba(0,0,0,.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #374151;
+  transition: background .2s, box-shadow .2s, transform .2s;
+
+  &:hover {
+    background: #800000;
+    color: #fff;
+    border-color: #800000;
+    box-shadow: 0 6px 20px rgba(128,0,0,.3);
+    transform: translateY(-50%) scale(1.08);
+  }
+
+  &.rec-arrow-prev { left: -18px; }
+  &.rec-arrow-next { right: -18px; }
+}

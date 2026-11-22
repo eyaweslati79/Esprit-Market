@@ -33,14 +33,14 @@ public class MarketplaceMLService {
     private final ProductRepository productRepository;
     private final OrderItemRepository orderItemRepository;
 
-    @Value("${app.cart-ml.enabled:true}")
+    @Value("${app.marketplace-ml.enabled:true}")
     private boolean enabled;
 
-    @Value("${app.cart-ml.timeout-seconds:10}")
+    @Value("${app.marketplace-ml.timeout-seconds:10}")
     private int timeoutSeconds;
 
     public MarketplaceMLService(
-            @Qualifier("cartMLWebClient") WebClient webClient,
+            @Qualifier("marketplaceMLWebClient") WebClient webClient,
             ProductRepository productRepository,
             OrderItemRepository orderItemRepository) {
         this.webClient          = webClient;

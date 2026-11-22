@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -36,6 +37,49 @@ public class RecommendationController {
     private final RecommendationService recommendationService;
 
     /**
+     * Product-page recommendations — ONLY same category as the viewed product.
+     * GET /api/recommendation/product/{userId}?productId={productId}
+     */
+    @GetMapping("/product/{userId}")
+    @Operation(summary = "Product-page recommendations (same category only)")
+    public ResponseEntity<RecommendationDTO> getProductPageRecommendations(
+            @PathVariable @NotBlank String userId,
+            @RequestParam @NotBlank String productId) {
+        try {
+            log.info("REST: Product-page recs for user={} product={}", userId, productId);
+            RecommendationDTO recs = recommendationService.getProductPageRecommendations(userId, productId);
+            return ResponseEntity.ok(recs);
+        } catch (Exception e) {
+            log.error("REST: Error getting product-page recs", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(createErrorRecommendation(userId, "Failed to fetch product-page recommendations"));
+        }
+    }
+
+    /**
+     * Cart-page recommendations — ONLY categories present in the cart.
+     * POST /api/recommendation/cart
+     * Body: { "userId": "...", "cartProductIds": ["id1","id2"] }
+     */
+    @PostMapping("/cart")
+    @Operation(summary = "Cart-page recommendations (cart categories + complementary)")
+    public ResponseEntity<RecommendationDTO> getCartRecommendations(
+            @RequestBody Map<String, Object> body) {
+        try {
+            String userId = (String) body.get("userId");
+            @SuppressWarnings("unchecked")
+            List<String> cartProductIds = (List<String>) body.getOrDefault("cartProductIds", List.of());
+            log.info("REST: Cart recs for user={} items={}", userId, cartProductIds.size());
+            RecommendationDTO recs = recommendationService.getCartRecommendations(userId, cartProductIds);
+            return ResponseEntity.ok(recs);
+        } catch (Exception e) {
+            log.error("REST: Error getting cart recs", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(createErrorRecommendation("unknown", "Failed to fetch cart recommendations"));
+        }
+    }
+
+    /**
      * Get product recommendations for a user
      * 
      * @param userId The user ID to get recommendations for
@@ -51,12 +95,14 @@ public class RecommendationController {
     })
     public ResponseEntity<RecommendationDTO> getRecommendations(
             @Parameter(description = "User ID to get recommendations for", required = true)
-            @PathVariable @NotBlank(message = "User ID cannot be blank") String userId) {
+            @PathVariable @NotBlank(message = "User ID cannot be blank") String userId,
+            @Parameter(description = "Optional category filter (e.g. electronics, accessories)")
+            @RequestParam(required = false) String category) {
         
         try {
-            log.info("REST: Getting recommendations for user: {}", userId);
+            log.info("REST: Getting recommendations for user: {} category: {}", userId, category);
             
-            RecommendationDTO recommendations = recommendationService.getRecommendations(userId);
+            RecommendationDTO recommendations = recommendationService.getRecommendations(userId, category);
             
             log.info("REST: Successfully retrieved {} recommendations for user: {}", 
                     recommendations.getTotalCount(), userId);

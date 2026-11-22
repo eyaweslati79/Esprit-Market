@@ -40,6 +40,8 @@ public class PredictiveAiService {
         private int has_exchange_proposal;
         private int has_image_attachment;
         private String product_category;
+        private String product_id;   // optional — ML service uses this to look up live stock
+        private Integer stock;       // optional — current product stock level
     }
 
     @Data
@@ -47,6 +49,7 @@ public class PredictiveAiService {
         private String prediction;
         private Map<String, Double> probabilities;
         private double accept_probability;
+        private Integer stock;
         private List<String> explanation;
     }
 
@@ -168,5 +171,30 @@ public class PredictiveAiService {
 
     public String getBaseUrl() {
         return config.getBaseUrl();
+    }
+
+    // ── Stock sync ────────────────────────────────────────────────────────────
+
+    @Data
+    @Builder
+    public static class StockSyncItem {
+        private String product_id;
+        private int stock;
+    }
+
+    /**
+     * Push current stock levels to the ML service so recommendations
+     * and negotiation predictions stay accurate.
+     * Fire-and-forget — never blocks the main flow.
+     */
+    public void syncStock(java.util.List<StockSyncItem> items) {
+        if (!config.isEnabled() || items == null || items.isEmpty()) return;
+        webClient.post()
+                .uri("/products/sync-stock")
+                .bodyValue(items)
+                .retrieve()
+                .bodyToMono(String.class)
+                .doOnError(e -> log.warn("Stock sync to ML service failed: {}", e.getMessage()))
+                .subscribe();
     }
 }

@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, signal, computed, inject, ElementRef, Vie
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SavService } from '../../core/services/sav.service';
-import { DeliveryEtaService } from '../../core/services/delivery-eta.service';
+import { DeliveryEtaService, EtaCoords } from '../../core/services/delivery-eta.service';
 import { ToastService } from '../../core/services/toast.service';
 import { UserService } from '../../../front/core/user.service';
 import { NotificationService } from '../../../front/core/notification.service';
@@ -187,6 +187,11 @@ export class DeliveriesAdminComponent implements OnInit, AfterViewInit, OnDestro
 
     const orderCoords = this.getDeliveryCoordinates(delivery);
     return this.deliveryDrivers()
+      // Filter out unconfigured accounts: must have at least a zone OR a vehicle set
+      .filter(driver =>
+        (driver.deliveryZone && driver.deliveryZone.trim().length > 0) ||
+        (driver.vehicleType  && driver.vehicleType.trim().length  > 0)
+      )
       .map(driver => {
         const coords = this.getDriverCoordinates(driver);
         const distanceKm = this.calculateDistanceKm(orderCoords, coords);
@@ -232,11 +237,7 @@ export class DeliveriesAdminComponent implements OnInit, AfterViewInit, OnDestro
     this.fetchDeliveries();
     this.fetchDrivers();
     this.fetchAdminNotifications();
-    // Poll every 15 seconds for new data
-    this.pollingInterval = setInterval(() => {
-      this.fetchDeliveries();
-      this.fetchAdminNotifications();
-    }, 15000);
+    // Auto-refresh removed — use the manual refresh button instead
   }
 
   ngAfterViewInit(): void {}
@@ -408,7 +409,23 @@ export class DeliveriesAdminComponent implements OnInit, AfterViewInit, OnDestro
   predictEta(delivery: Delivery, event?: Event) {
     event?.stopPropagation();
     this.etaLoadingId.set(delivery.id);
-    this.deliveryEtaService.predict(delivery.id).subscribe({
+
+    // Read coordinates already computed by the map — exact lat/lng instead of zone centroid
+    const destCoords  = this.getDeliveryCoordinates(delivery);
+    const driverCoords = delivery.userId && delivery.userId !== 'pending'
+      ? (() => {
+          const driver = this.deliveryDrivers().find(d => d.id === delivery.userId);
+          return driver ? this.getDriverCoordinates(driver) : null;
+        })()
+      : null;
+
+    const coords = driverCoords
+      ? { originLat: driverCoords[0], originLng: driverCoords[1],
+          destLat:   destCoords[0],   destLng:   destCoords[1] }
+      : { originLat: destCoords[0] + 0.02, originLng: destCoords[1] - 0.02,
+          destLat:   destCoords[0],        destLng:   destCoords[1] };
+
+    this.deliveryEtaService.predictWithCoords(delivery.id, coords).subscribe({
       next: (prediction) => {
         this.upsertEtaPrediction(prediction);
         this.etaLoadingId.set('');

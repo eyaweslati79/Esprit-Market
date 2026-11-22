@@ -14,7 +14,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 @Data
 public class PredictiveAiConfig {
 
-    private String baseUrl = "http://127.0.0.1:8000";
+    private String baseUrl = "http://127.0.0.1:8007";
     private int timeoutSeconds = 15;
     private boolean enabled = true;
 

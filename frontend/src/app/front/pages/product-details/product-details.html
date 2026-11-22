@@ -100,8 +100,8 @@
                     }
                 </div>
 
-                <!-- 🤖 AI Market Insight Panel -->
-                @if (mlInsight()) {
+                <!-- 🤖 AI Market Insight Panel — visible to PROVIDER and ADMIN only -->
+                @if (mlInsight() && (isAdmin() || isOwnProduct())) {
                   <div class="rounded-2xl border p-4 flex items-start gap-3"
                        [class.border-orange-200]="mlInsight()!.promotion_suggestion === 'YES'"
                        [class.bg-orange-50]="mlInsight()!.promotion_suggestion === 'YES'"
@@ -530,7 +530,10 @@
       [userId]="currentUserId()"
       [limit]="6"
       title=""
-      [showInfoCard]="false">
+      [showInfoCard]="false"
+      context="product"
+      [filterCategory]="safeProduct().category"
+      [excludeId]="safeProduct().id">
     </app-recommendation-widget>
 
   </div>

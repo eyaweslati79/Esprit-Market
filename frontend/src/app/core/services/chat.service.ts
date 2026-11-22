@@ -89,6 +89,9 @@ export class ChatService {
 
     (window as any).global = window; // sockjs-client polyfill
 
+    let retryCount = 0;
+    const MAX_RETRIES = 5;
+
     this.stompClient = new Client({
       // Force native WebSocket — SockJS XHR/iframe fallbacks are blocked by Cloudflare tunnel
       webSocketFactory: () => {
@@ -96,13 +99,14 @@ export class ChatService {
         console.log(`[STOMP] Connecting via native WebSocket: ${wsUrl}`);
         return new WebSocket(wsUrl.replace('https://', 'wss://').replace('http://', 'ws://'));
       },
-      reconnectDelay: 3000,
+      reconnectDelay: 5000,
       heartbeatIncoming: 10000,
       heartbeatOutgoing: 10000,
     });
 
     this.stompClient.onConnect = () => {
       this.connectionStateSubject.next(true);
+      retryCount = 0; // reset on successful connection
       console.log('✅ STOMP connected');
 
       // Subscribe to global presence topic
@@ -145,6 +149,11 @@ export class ChatService {
 
     this.stompClient.onWebSocketError = (event) => {
       console.error('WebSocket error', event);
+      retryCount++;
+      if (retryCount >= MAX_RETRIES) {
+        console.warn(`[STOMP] Max retries (${MAX_RETRIES}) reached — stopping reconnect.`);
+        this.stompClient?.deactivate();
+      }
     };
 
     this.stompClient.activate();

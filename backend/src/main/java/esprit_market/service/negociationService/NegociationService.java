@@ -17,6 +17,7 @@ import esprit_market.entity.negociation.Negociation;
 import esprit_market.entity.negociation.Proposal;
 import esprit_market.entity.user.User;
 import esprit_market.mappers.negociationMapper.NegociationMapper;
+import esprit_market.repository.marketplaceRepository.CategoryRepository;
 import esprit_market.repository.marketplaceRepository.ProductRepository;
 import esprit_market.repository.marketplaceRepository.ServiceRepository;
 import esprit_market.repository.marketplaceRepository.ShopRepository;
@@ -49,6 +50,7 @@ public class NegociationService implements INegociationService {
     private final ServiceRepository serviceRepository;
     private final ProductRepository productRepository;
     private final ShopRepository shopRepository;
+    private final CategoryRepository categoryRepository;
     private final INotificationService notificationService;
     private final NegotiationWebSocketService wsService;
     private final PredictiveAiService predictiveAiService;
@@ -146,6 +148,8 @@ public class NegociationService implements INegociationService {
                     "Client " + client.getFirstName() + " wants to negotiate for " + getItemName(saved),
                     NotificationType.INTERNAL_NOTIFICATION, saved.getId().toHexString());
         }
+        // Compute AI probability for the initial proposal
+        refreshAiProbability(saved);
         return negociationMapper.toResponse(saved);
     }
 
@@ -311,6 +315,9 @@ public class NegociationService implements INegociationService {
                 "The provider sent a counter offer of " + proposal.getAmount() + " TND for \"" + getItemName(saved) + "\"",
                 NotificationType.NEGOTIATION_PROPOSAL, saved.getId().toHexString());
 
+        // Refresh AI probability after every proposal
+        refreshAiProbability(saved);
+
         NegociationResponse response = negociationMapper.toResponse(saved);
         wsService.broadcast(response);
         return response;
@@ -444,6 +451,10 @@ public class NegociationService implements INegociationService {
         }
 
         log.info("Proposal added to negociation: {}", negociationId);
+
+        // Refresh AI probability after every proposal
+        refreshAiProbability(saved);
+
         NegociationResponse response = negociationMapper.toResponse(saved);
         wsService.broadcast(response);
         return response;
@@ -462,36 +473,129 @@ public class NegociationService implements INegociationService {
         negociationRepository.deleteById(new ObjectId(id));
     }
 
+    /**
+     * Compute and persist the AI acceptance probability for a negotiation
+     * based on the latest buyer proposal. Called after every proposal save.
+     * Fire-and-forget — never throws.
+     */
+    private void refreshAiProbability(Negociation neg) {
+        try {
+            // Find the last proposal made by the client (buyer)
+            if (neg.getProposals() == null || neg.getProposals().isEmpty()) return;
+
+            Proposal lastBuyerProposal = null;
+            for (int i = neg.getProposals().size() - 1; i >= 0; i--) {
+                Proposal p = neg.getProposals().get(i);
+                if (p.getSender() != null && neg.getClient() != null
+                        && p.getSender().getId().equals(neg.getClient().getId())) {
+                    lastBuyerProposal = p;
+                    break;
+                }
+            }
+            if (lastBuyerProposal == null || lastBuyerProposal.getAmount() == null) return;
+
+            double basePrice = neg.getProduct() != null ? neg.getProduct().getPrice()
+                    : (neg.getService() != null ? neg.getService().getPrice() : 0.0);
+            if (basePrice <= 0) return;
+
+            String category = "General";
+            if (neg.getProduct() != null && neg.getProduct().getCategoryIds() != null
+                    && !neg.getProduct().getCategoryIds().isEmpty()) {
+                category = categoryRepository.findById(neg.getProduct().getCategoryIds().get(0))
+                        .map(c -> c.getName()).orElse("General");
+            }
+
+            String msg = lastBuyerProposal.getMessage() != null ? lastBuyerProposal.getMessage() : "";
+            boolean hasImage = lastBuyerProposal.getExchangeImage() != null
+                    && !lastBuyerProposal.getExchangeImage().isBlank();
+            double buyerRating = neg.getClient() != null && neg.getClient().getAverageRating() > 0
+                    ? neg.getClient().getAverageRating() : 4.0;
+
+            PredictiveAiService.NegotiationAiRequest aiRequest = PredictiveAiService.NegotiationAiRequest.builder()
+                    .base_price(basePrice)
+                    .offered_price(lastBuyerProposal.getAmount())
+                    .quantity(lastBuyerProposal.getQuantity() != null ? lastBuyerProposal.getQuantity() : 1)
+                    .buyer_rating(buyerRating)
+                    .buyer_account_age_months(12)
+                    .is_return_customer(0)
+                    .message_length(msg.length())
+                    .has_exchange_proposal(Boolean.TRUE.equals(lastBuyerProposal.getIsExchange()) ? 1 : 0)
+                    .has_image_attachment(hasImage ? 1 : 0)
+                    .product_category(category)
+                    .product_id(neg.getProduct() != null ? neg.getProduct().getId().toHexString() : null)
+                    .stock(neg.getProduct() != null ? neg.getProduct().getStock() : null)
+                    .build();
+
+            PredictiveAiService.NegotiationAiResponse aiResponse =
+                    predictiveAiService.predictNegotiation(aiRequest).block();
+
+            if (aiResponse != null) {
+                neg.setAiAcceptanceProbability(aiResponse.getAccept_probability());
+                neg.setAiExplanation(aiResponse.getExplanation());
+                negociationRepository.save(neg);
+                log.debug("AI probability updated for neg {}: {}%",
+                        neg.getId().toHexString(),
+                        Math.round(aiResponse.getAccept_probability() * 100));
+            }
+        } catch (Exception e) {
+            log.warn("AI probability refresh failed (non-critical): {}", e.getMessage());
+        }
+    }
+
+    @Override
+    public int backfillAiProbabilities() {
+        List<esprit_market.entity.negociation.Negociation> all = negociationRepository.findAll();
+        int count = 0;
+        for (esprit_market.entity.negociation.Negociation neg : all) {
+            if (neg.getAiAcceptanceProbability() == null) {
+                refreshAiProbability(neg);
+                count++;
+            }
+        }
+        log.info("Backfilled AI probability for {} negotiations", count);
+        return count;
+    }
+
     @Override
     public NegociationResponse predictNegotiation(NegociationRequest request, String clientId) {
         User client = getUser(clientId);
         ServiceEntity service = getService(request.getServiceId());
         Product product = null;
         double basePrice = 0.0;
-        String category = "OTHER";
+        String category = "General";
 
         if (service == null) {
             product = getProduct(request.getServiceId());
             if (product != null) {
                 basePrice = product.getPrice();
-                category = "PRODUCT"; // Product entity uses categoryIds list, defaulting to PRODUCT for AI
+                // Resolve the real category name from the first categoryId
+                if (product.getCategoryIds() != null && !product.getCategoryIds().isEmpty()) {
+                    category = categoryRepository.findById(product.getCategoryIds().get(0))
+                            .map(c -> c.getName())
+                            .orElse("General");
+                }
             }
         } else {
             basePrice = service.getPrice();
-            category = "SERVICE";
+            category = "Service";
         }
+
+        // Use the real buyer rating from the user's trust score / average rating
+        double buyerRating = client.getAverageRating() > 0 ? client.getAverageRating() : 4.0;
 
         PredictiveAiService.NegotiationAiRequest aiRequest = PredictiveAiService.NegotiationAiRequest.builder()
                 .base_price(basePrice)
                 .offered_price(request.getAmount() != null ? request.getAmount() : 0.0)
                 .quantity(request.getQuantity() != null ? request.getQuantity() : 1)
-                .buyer_rating(4.0) // Mock
-                .buyer_account_age_months(12) // Mock
-                .is_return_customer(0) // Mock
+                .buyer_rating(buyerRating)
+                .buyer_account_age_months(12)
+                .is_return_customer(0)
                 .message_length(request.getMessage() != null ? request.getMessage().length() : 0)
                 .has_exchange_proposal(Boolean.TRUE.equals(request.getIsExchange()) ? 1 : 0)
-                .has_image_attachment(request.getExchangeImage() != null ? 1 : 0)
+                .has_image_attachment(request.getExchangeImage() != null && !request.getExchangeImage().isBlank() ? 1 : 0)
                 .product_category(category)
+                .product_id(request.getServiceId())
+                .stock(product != null ? product.getStock() : (service != null ? null : null))
                 .build();
 
         NegociationResponse response = NegociationResponse.builder()

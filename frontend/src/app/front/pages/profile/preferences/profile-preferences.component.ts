@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import { NotificationSettingsService } from '../../../core/notification-settings.service';
 import { NotificationSettingsComponent } from '../../notifications/notification-settings.component';
+import { CATEGORY_NAMES } from '../../../core/categories.config';
 
 @Component({
   selector: 'app-profile-preferences',
@@ -80,10 +81,7 @@ export class ProfilePreferencesComponent {
     'Web Development', 'AI/ML', 'Cybersecurity', 'DevOps', 'Cloud Computing'
   ];
 
-  availableCategories = [
-    'Electronics', 'Books', 'Gaming', 'Furniture',
-    'Services', 'Sports', 'Clothing', 'Food'
-  ];
+  availableCategories = CATEGORY_NAMES;
 
   themes = [
     { value: 'light' as const, label: 'Light', icon: '☀️' },

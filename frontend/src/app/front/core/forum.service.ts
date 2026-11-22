@@ -41,11 +41,12 @@ export interface PostDto {
   userId: string;
   categoryId: string;
   content: string;
-  createdAt: string; // LocalDateTime serialized as string
+  createdAt: string;
   pinned: boolean;
   approved: boolean;
   commentIds: string[];
   reactionIds: string[];
+  imageUrl?: string;
   recommendedPosts?: RecommendedForumPostDto[];
 }
 
@@ -194,6 +195,29 @@ export class ForumService {
     };
 
     return this.http.post<PostDto>(`${this.apiUrl}/forum/posts`, body);
+  }
+
+  /** Create a post with an optional image — uses multipart/form-data. */
+  createPostWithImage(request: CreatePostRequest, imageFile?: File | null): Observable<PostDto> {
+    const userId = this.getUserIdOrThrow();
+    const title   = request.title?.trim() ?? '';
+    const content = request.content?.trim() ?? '';
+    const fullContent = title ? `${title}\n${content}` : content;
+
+    if (!imageFile) {
+      // No image — use the regular JSON endpoint
+      return this.createPost(request);
+    }
+
+    const fd = new FormData();
+    fd.append('userId',     userId);
+    fd.append('categoryId', request.categoryId);
+    fd.append('content',    fullContent);
+    fd.append('approved',   'true');
+    fd.append('pinned',     'false');
+    fd.append('image',      imageFile, imageFile.name);
+
+    return this.http.post<PostDto>(`${this.apiUrl}/forum/posts/with-image`, fd);
   }
 
   updatePost(
